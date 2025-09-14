@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { executeUserQuery } from '../config/database.js';
 
 class AIService {
@@ -10,7 +11,7 @@ class AIService {
       },
       gemini: {
         baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-        models: ['gemini-pro', 'gemini-pro-vision']
+        models: ['gemini-pro', 'gemini-1.5-flash', 'gemini-1.5-pro']
       },
       huggingface: {
         baseURL: 'https://api-inference.huggingface.co/models',
@@ -39,8 +40,8 @@ class AIService {
 
   async callOpenAI(model, message, systemPrompt, temperature, maxTokens) {
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || apiKey.includes('example') || apiKey.length < 20) {
-      throw new Error('OPENAI_API_KEY não configurada ou inválida. Configure uma chave real da OpenAI.');
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY não configurada. Configure uma chave real da OpenAI no arquivo .env');
     }
 
     const response = await axios.post(
@@ -67,40 +68,31 @@ class AIService {
 
   async callGemini(model, message, systemPrompt, temperature, maxTokens) {
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!apiKey || apiKey.includes('example') || apiKey.length < 20) {
-      throw new Error('GOOGLE_GEMINI_API_KEY não configurada ou inválida. Configure uma chave real do Google.');
+    if (!apiKey) {
+      throw new Error('GOOGLE_GEMINI_API_KEY não configurada. Configure uma chave real do Google no arquivo .env');
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const geminiModel = genAI.getGenerativeModel({ model: model || 'gemini-1.5-flash' });
 
     const prompt = systemPrompt ? `${systemPrompt}\n\nUser: ${message}` : message;
     
-    // Usar gemini-1.5-flash como modelo padrão (funciona 100%)
-    const modelName = model || 'gemini-1.5-flash';
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-      {
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+    const result = await geminiModel.generateContent({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens
       }
-    );
+    });
 
-    return response.data.candidates[0].content.parts[0].text;
+    const response = await result.response;
+    return response.text();
   }
 
   async callHuggingFace(model, message, systemPrompt, temperature, maxTokens) {
     const apiKey = process.env.HUGGINGFACE_API_KEY;
-    if (!apiKey || apiKey.includes('example') || apiKey.length < 20) {
-      throw new Error('HUGGINGFACE_API_KEY não configurada ou inválida. Configure uma chave real do Hugging Face.');
+    if (!apiKey) {
+      throw new Error('HUGGINGFACE_API_KEY não configurada. Configure uma chave real do Hugging Face no arquivo .env');
     }
 
     const prompt = systemPrompt ? `${systemPrompt}\n\nUser: ${message}\nAssistant:` : `User: ${message}\nAssistant:`;
@@ -150,11 +142,10 @@ class AIService {
     }
   }
 
-  // RAG - Gerar resposta com contexto
+  // Construir prompt do agente
   buildAgentPrompt(agent, basePrompt) {
     let fullPrompt = basePrompt || 'Você é um assistente útil.';
     
-    // Adicionar informações do agente ao prompt
     if (agent.description) {
       fullPrompt += `\n\nDescrição: ${agent.description}`;
     }

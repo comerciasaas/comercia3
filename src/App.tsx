@@ -9,6 +9,8 @@ const Login = lazy(() => import('./pages/Login').then(module => ({ default: modu
 const Register = lazy(() => import('./pages/Register').then(module => ({ default: module.Register })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const Agents = lazy(() => import('./pages/Agents').then(module => ({ default: module.Agents })));
+const Chat = lazy(() => import('./pages/Chat').then(module => ({ default: module.Chat })));
+const Conversations = lazy(() => import('./pages/Conversations').then(module => ({ default: module.Conversations })));
 const Settings = lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
 const Barbearia = lazy(() => import('./pages/Barbearia').then(module => ({ default: module.Barbearia })));
 
@@ -66,6 +68,8 @@ const AppContent: React.FC = () => {
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/agents" element={<Agents />} />
+                      <Route path="/chat" element={<Chat />} />
+                      <Route path="/conversations" element={<Conversations />} />
                       <Route path="/settings" element={<Settings />} />
                     </Routes>
                   </Suspense>

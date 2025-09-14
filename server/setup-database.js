@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -37,7 +38,7 @@ async function setupDatabase() {
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
-        role ENUM('admin', 'user') DEFAULT 'user',
+        role ENUM('admin', 'user', 'barbearia') DEFAULT 'user',
         plan ENUM('free', 'basic', 'premium', 'enterprise') DEFAULT 'free',
         company VARCHAR(255),
         phone VARCHAR(20),
@@ -113,7 +114,6 @@ async function setupDatabase() {
     `);
 
     // Criar usuário administrador
-    const bcrypt = (await import('bcryptjs')).default;
     const adminPassword = await bcrypt.hash('admin123', 12);
     
     await connection.execute(`
@@ -124,11 +124,24 @@ async function setupDatabase() {
         role = 'admin',
         is_active = true,
         email_verified = true
-    `, ['Administrador', 'admin@admin.com', adminPassword, 'admin', 'enterprise', true, true]);
+    `, ['Administrador', 'admin@dinamica.com', adminPassword, 'admin', 'enterprise', true, true]);
 
-    console.log('✅ Usuário administrador criado/atualizado');
-    console.log('📧 Email: admin@admin.com');
-    console.log('🔑 Senha: admin123');
+    // Criar usuário da barbearia
+    const barbeariaPassword = await bcrypt.hash('barbearia123', 12);
+    
+    await connection.execute(`
+      INSERT INTO users (name, email, password, role, plan, is_active, email_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        password = VALUES(password),
+        role = 'barbearia',
+        is_active = true,
+        email_verified = true
+    `, ['Barbearia Demo', 'barbearia@dinamica.com', barbeariaPassword, 'barbearia', 'premium', true, true]);
+
+    console.log('✅ Usuários padrão criados/atualizados');
+    console.log('📧 Admin: admin@dinamica.com / admin123');
+    console.log('📧 Barbearia: barbearia@dinamica.com / barbearia123');
 
     console.log('\n🎉 Setup do banco de dados concluído com sucesso!');
     console.log('🚀 Agora você pode iniciar o servidor com: npm run server:dev');

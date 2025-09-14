@@ -6,13 +6,9 @@ import {
   ChatBubbleLeftRightIcon,
   ChartBarIcon,
   CogIcon,
-  CreditCardIcon,
   ShieldCheckIcon,
-  BoltIcon,
-  PhoneIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
-  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import { useApp } from '../../contexts/AppContext';
 
@@ -21,13 +17,9 @@ const navigation = [
   { name: 'Agentes de IA', href: '/dashboard/agents', icon: UserGroupIcon },
   { name: 'Conversas', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
   { name: 'Chat IA', href: '/dashboard/chat', icon: ChatBubbleLeftRightIcon },
-  { name: 'WhatsApp', href: '/dashboard/whatsapp', icon: DevicePhoneMobileIcon },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
-  { name: 'Integrações', href: '/dashboard/integrations', icon: BoltIcon },
   { name: 'Treinamento', href: '/dashboard/training', icon: DocumentTextIcon },
-  { name: 'Canais', href: '/dashboard/channels', icon: PhoneIcon },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
   { name: 'Alertas', href: '/dashboard/alerts', icon: ExclamationTriangleIcon },
-  { name: 'Pagamentos', href: '/dashboard/payments', icon: CreditCardIcon },
   { name: 'Admin', href: '/dashboard/admin', icon: ShieldCheckIcon },
   { name: 'Configurações', href: '/dashboard/settings', icon: CogIcon },
 ];
@@ -46,7 +38,7 @@ export const Sidebar: React.FC = () => {
            </div>
           <div className="ml-3">
             <h1 className="text-lg font-bold text-gray-900">Dinâmica</h1>
-            <p className="text-xs text-gray-500">SaaS Platform 2025</p>
+            <p className="text-xs text-gray-500">IA Platform</p>
           </div>
         </div>
       </div>
@@ -97,7 +89,7 @@ export const Sidebar: React.FC = () => {
       {/* Quick Stats */}
       <div className="px-4 py-4 border-t border-gray-200">
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Estatísticas Rápidas</h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Estatísticas</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Agentes Ativos</span>
@@ -106,14 +98,10 @@ export const Sidebar: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Conversas Hoje</span>
+              <span>Conversas Ativas</span>
               <span className="font-medium text-blue-600">
                 {state.dashboardStats?.overview?.activeConversations || 0}
               </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>WhatsApp Ativo</span>
-              <span className="font-medium text-purple-600">0</span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Satisfação</span>

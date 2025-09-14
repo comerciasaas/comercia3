@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configuração principal do banco (para sistema e usuários)
+// Configuração principal do banco
 const mainConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 3306,
@@ -162,6 +162,27 @@ const createUserTables = async (pool) => {
       INDEX idx_knowledge_category (category),
       INDEX idx_knowledge_active (is_active),
       FULLTEXT idx_knowledge_content (title, content)
+    )`,
+
+    // Tabela de agendamentos (para barbearia)
+    `CREATE TABLE IF NOT EXISTS agendamentos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      cliente VARCHAR(255) NOT NULL,
+      telefone VARCHAR(20) NOT NULL,
+      email VARCHAR(255),
+      data DATE NOT NULL,
+      horario TIME NOT NULL,
+      servico ENUM('cabelo', 'barba', 'cabelo_barba') NOT NULL,
+      valor DECIMAL(10,2) DEFAULT 0.00,
+      pago BOOLEAN DEFAULT false,
+      metodo_pagamento ENUM('dinheiro', 'pix', 'cartao', 'pendente') DEFAULT 'pendente',
+      observacoes TEXT,
+      status ENUM('confirmado', 'pendente', 'cancelado', 'concluido') DEFAULT 'pendente',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_agendamentos_data (data),
+      INDEX idx_agendamentos_status (status),
+      INDEX idx_agendamentos_telefone (telefone)
     )`
   ];
 

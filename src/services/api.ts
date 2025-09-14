@@ -190,18 +190,6 @@ class ApiService {
     });
   }
 
-  // WhatsApp methods
-  async getWhatsAppSessions(): Promise<ApiResponse> {
-    return this.request('/whatsapp/sessions');
-  }
-
-  async sendWhatsAppMessage(phoneNumber: string, message: string, conversationId?: string): Promise<ApiResponse> {
-    return this.request('/whatsapp/send', {
-      method: 'POST',
-      body: JSON.stringify({ phoneNumber, message, conversationId })
-    });
-  }
-
   // Barbearia methods
   async getBarbeariaAgendamentos(data?: string): Promise<ApiResponse> {
     const params = data ? `?data=${data}` : '';
@@ -216,7 +204,7 @@ class ApiService {
   }
 
   async updateBarbeariaAgendamento(id: string, updates: any): Promise<ApiResponse> {
-    return this.request(`/barbearia/agendamento/${id}`, {
+    return this.request(`/barbearia/agendamentos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates)
     });
