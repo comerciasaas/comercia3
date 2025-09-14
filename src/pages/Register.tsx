@@ -48,14 +48,12 @@ export const Register: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Nome
     if (!formData.name.trim()) {
       newErrors.name = 'Nome é obrigatório';
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Nome deve ter pelo menos 2 caracteres';
     }
 
-    // Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
       newErrors.email = 'Email é obrigatório';
@@ -63,36 +61,26 @@ export const Register: React.FC = () => {
       newErrors.email = 'Email inválido';
     }
 
-    // Senha
     if (!formData.password) {
       newErrors.password = 'Senha é obrigatória';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Senha deve ter pelo menos 8 caracteres';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Senha deve conter pelo menos uma letra maiúscula, uma minúscula e um número';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Senha deve ter pelo menos 6 caracteres';
     }
 
-    // Confirmar senha
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Confirmação de senha é obrigatória';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Senhas não coincidem';
     }
 
-    // Empresa
     if (!formData.company.trim()) {
       newErrors.company = 'Nome da empresa é obrigatório';
     }
 
-    // Telefone
-    const phoneRegex = /^\(?\d{2}\)?[\s-]?\d{4,5}[\s-]?\d{4}$/;
     if (!formData.phone.trim()) {
       newErrors.phone = 'Telefone é obrigatório';
-    } else if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Telefone inválido';
     }
 
-    // Termos
     if (!formData.acceptTerms) {
       newErrors.acceptTerms = 'Você deve aceitar os termos de uso';
     }
@@ -108,7 +96,6 @@ export const Register: React.FC = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
 
-    // Limpar erro do campo quando o usuário começar a digitar
     if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
@@ -125,31 +112,6 @@ export const Register: React.FC = () => {
     setErrors({});
 
     try {
-      // Para teste: simular registro bem-sucedido com dados válidos
-      if (formData.email.includes('@test.com') || formData.email.includes('@demo.com')) {
-        console.log('Registro de demonstração realizado');
-        
-        // Simular resposta de sucesso
-        const mockUser = {
-          id: Date.now(),
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          company: formData.company.trim(),
-          phone: formData.phone.replace(/\D/g, ''),
-          role: 'user',
-          plan: 'free'
-        };
-        
-        const mockToken = 'demo-register-token-' + Date.now();
-        
-        localStorage.setItem('token', mockToken);
-        dispatch({ type: 'SET_USER', payload: mockUser });
-        showSuccess('Conta criada com sucesso!', `Bem-vindo, ${mockUser.name}!`);
-        navigate('/dashboard');
-        return;
-      }
-      
-      // Tentar registro real
       const response = await apiService.register({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
@@ -158,32 +120,19 @@ export const Register: React.FC = () => {
         phone: formData.phone.replace(/\D/g, '')
       });
 
-      if (response.user) {
-          dispatch({ type: 'SET_USER', payload: response.user });
-          showSuccess('Conta criada com sucesso!', `Bem-vindo, ${response.user.name}!`);
-          navigate('/dashboard');
-        }
+      if (response.success) {
+        dispatch({ type: 'SET_USER', payload: response.user });
+        showSuccess('Conta criada com sucesso!', `Bem-vindo, ${response.user.name}!`);
+        navigate('/dashboard');
+      } else {
+        setErrors({ general: response.error || 'Erro ao criar conta' });
+        showError('Erro no cadastro', response.error || 'Erro ao criar conta');
+      }
     } catch (error: any) {
       console.error('Registration error:', error);
-      
-      if (error.response?.status === 409) {
-          setErrors({ email: 'Este email já está em uso' });
-          showError('Email já cadastrado', 'Este email já está em uso');
-        } else if (error.response?.status === 422) {
-          const validationErrors = error.response.data?.errors || {};
-          setErrors(validationErrors);
-          showError('Dados inválidos', 'Por favor, corrija os erros no formulário');
-        } else if (error.response?.status === 429) {
-          setErrors({ general: 'Muitas tentativas. Tente novamente em alguns minutos' });
-          showError('Limite excedido', 'Muitas tentativas. Tente novamente em alguns minutos');
-        } else if (error.code === 'NETWORK_ERROR') {
-          setErrors({ general: 'Erro de conexão. Verifique sua internet' });
-          showError('Erro de conexão', 'Verifique sua internet e tente novamente');
-        } else {
-          const errorMessage = error.response?.data?.error || 'Erro interno do servidor. Tente novamente';
-          setErrors({ general: errorMessage });
-          showError('Erro no cadastro', errorMessage);
-        }
+      const errorMessage = error.message || 'Erro interno do servidor';
+      setErrors({ general: errorMessage });
+      showError('Erro no cadastro', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -214,8 +163,6 @@ export const Register: React.FC = () => {
             Junte-se à plataforma de agentes de IA mais avançada
           </p>
         </div>
-
-
 
         {/* Form */}
         <motion.form
@@ -349,7 +296,7 @@ export const Register: React.FC = () => {
                   className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                 />
                 <button
                   type="button"

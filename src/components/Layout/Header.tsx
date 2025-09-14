@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BellIcon, MagnifyingGlassIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useApp } from '../../contexts/AppContext';
+import { apiService } from '../../services/api';
 
 export const Header: React.FC = () => {
   const { state, dispatch } = useApp();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -17,33 +20,19 @@ export const Header: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Check for test credentials
-    const authToken = localStorage.getItem('authToken');
-    if (authToken === 'demo-token' && searchQuery.trim()) {
-      alert(`Busca simulada por: "${searchQuery}". Em um ambiente real, isso filtraria agentes, conversas e clientes.`);
+    if (searchQuery.trim()) {
+      console.log('Buscar por:', searchQuery);
+      // Implementar busca real aqui
     }
   };
 
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-
-  // Carregar notificações reais da API
   const loadNotifications = async () => {
     try {
       setNotificationsLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/notifications?limit=5', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiService.get('/notifications?limit=5');
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setNotifications(data.data || []);
-        }
+      if (response.success) {
+        setNotifications(response.data.notifications || []);
       }
     } catch (error) {
       console.error('Erro ao carregar notificações:', error);
@@ -52,12 +41,12 @@ export const Header: React.FC = () => {
     }
   };
 
-  // Carregar notificações ao montar o componente
   useEffect(() => {
-    loadNotifications();
-  }, []);
+    if (showNotifications) {
+      loadNotifications();
+    }
+  }, [showNotifications]);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -104,13 +93,13 @@ export const Header: React.FC = () => {
               className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg"
             >
               <BellIcon className="h-6 w-6" />
-              {localStorage.getItem('authToken') === 'demo-token' && (
+              {notifications.length > 0 && (
                 <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-400"></span>
               )}
             </button>
 
             {/* Notifications dropdown */}
-            {showNotifications && localStorage.getItem('authToken') === 'demo-token' && (
+            {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                 <div className="py-1">
                   <div className="px-4 py-2 border-b border-gray-200">
@@ -123,39 +112,28 @@ export const Header: React.FC = () => {
                         <p className="text-sm text-gray-500 mt-2">Carregando...</p>
                       </div>
                     ) : notifications.length > 0 ? (
-                      notifications.map((notification) => {
-                        const timeAgo = notification.created_at ? 
-                          new Date(notification.created_at).toLocaleString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : 'Agora';
-                        
-                        return (
-                          <div key={notification.id} className={`px-4 py-3 hover:bg-gray-50 ${!notification.is_read ? 'bg-blue-50' : ''}`}>
-                            <div className="flex items-start">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                                <p className="text-sm text-gray-500">{notification.message}</p>
-                                <p className="text-xs text-gray-400 mt-1">{timeAgo}</p>
-                              </div>
-                              {!notification.is_read && (
-                                <div className="ml-2 w-2 h-2 bg-blue-600 rounded-full"></div>
-                              )}
+                      notifications.map((notification) => (
+                        <div key={notification.id} className={`px-4 py-3 hover:bg-gray-50 ${!notification.read_at ? 'bg-blue-50' : ''}`}>
+                          <div className="flex items-start">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                              <p className="text-sm text-gray-500">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notification.created_at).toLocaleString('pt-BR')}
+                              </p>
                             </div>
+                            {!notification.read_at && (
+                              <div className="ml-2 w-2 h-2 bg-blue-600 rounded-full"></div>
+                            )}
                           </div>
-                        );
-                      })
+                        </div>
+                      ))
                     ) : (
                       <div className="px-4 py-8 text-center">
                         <BellIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-500">Nenhuma notificação</p>
                       </div>
                     )}
-                  </div>
-                  <div className="px-4 py-2 border-t border-gray-200">
-                    <button className="text-sm text-blue-600 hover:text-blue-800">Ver todas as notificações</button>
                   </div>
                 </div>
               </div>

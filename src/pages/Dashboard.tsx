@@ -32,7 +32,6 @@ export const Dashboard: React.FC = () => {
           apiService.getConversations({ limit: 10 })
         ]);
         
-        // Construir estatísticas do dashboard
         const dashboardStats = {
           overview: {
             totalAgents: agentStats.data?.stats?.total || 0,
@@ -40,7 +39,7 @@ export const Dashboard: React.FC = () => {
             totalConversations: conversationStats.data?.stats?.total || 0,
             activeConversations: conversationStats.data?.stats?.active || 0,
             avgSatisfaction: conversationStats.data?.stats?.avgSatisfaction || 0,
-            avgResponseTime: 0
+            avgResponseTime: conversationStats.data?.stats?.avgResponseTime || 0
           },
           trends: {
             dailyConversations: conversationStats.data?.stats?.dailyConversations || [],

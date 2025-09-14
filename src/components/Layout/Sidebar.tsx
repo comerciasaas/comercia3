@@ -51,16 +51,6 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Test Mode Indicator */}
-      {localStorage.getItem('authToken') === 'demo-token' && (
-        <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-            <p className="ml-2 text-xs font-medium text-blue-800">Modo Demonstração</p>
-          </div>
-        </div>
-      )}
-
       {/* User Info */}
       {state.user && (
         <div className="px-6 py-4 border-b border-gray-200">
@@ -112,42 +102,26 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Agentes Ativos</span>
               <span className="font-medium text-green-600">
-                {localStorage.getItem('authToken') === 'demo-token' ? '8' : (Array.isArray(state.agents) ? state.agents.filter(a => a.isActive).length : 0)}
+                {Array.isArray(state.agents) ? state.agents.filter(a => a.is_active).length : 0}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Conversas Hoje</span>
               <span className="font-medium text-blue-600">
-                {localStorage.getItem('authToken') === 'demo-token' ? '47' : (state.dashboardStats?.activeConversations || 0)}
+                {state.dashboardStats?.overview?.activeConversations || 0}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>WhatsApp Ativo</span>
-              <span className="font-medium text-purple-600">
-                {localStorage.getItem('authToken') === 'demo-token' ? '12' : '0'}
-              </span>
+              <span className="font-medium text-purple-600">0</span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Satisfação</span>
               <span className="font-medium text-yellow-600">
-                {localStorage.getItem('authToken') === 'demo-token' ? '4.8★' : 'N/A'}
+                {state.dashboardStats?.overview?.avgSatisfaction?.toFixed(1) || '0.0'}★
               </span>
             </div>
           </div>
-          
-          {/* Usage Progress */}
-          {localStorage.getItem('authToken') === 'demo-token' && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span>Uso do Plano</span>
-                <span className="font-medium">73%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 h-1.5 rounded-full" style={{width: '73%'}}></div>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">2.190 / 3.000 mensagens</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

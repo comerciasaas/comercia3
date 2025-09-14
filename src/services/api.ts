@@ -1,21 +1,12 @@
-// Configuração dinâmica da URL da API baseada no ambiente
-const getApiBaseUrl = () => {
-  // Verificar se está em produção
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || window.location.origin + '/api';
-  }
-  
-  // Desenvolvimento - verificar variável de ambiente ou usar padrão
-  return process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
   error?: string;
+  token?: string;
+  user?: any;
 }
 
 class ApiService {
@@ -25,10 +16,9 @@ class ApiService {
     this.token = localStorage.getItem('token');
   }
 
-  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    // Sempre sincronizar token com localStorage antes da requisição
     this.token = localStorage.getItem('token');
     
     const config: RequestInit = {
@@ -62,7 +52,6 @@ class ApiService {
     }
   }
 
-  // Generic HTTP methods
   async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
@@ -87,59 +76,48 @@ class ApiService {
 
   // Auth methods
   async login(email: string, password: string): Promise<ApiResponse> {
-    const data = await this.request('/auth/login', {
+    const response = await this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
     
-    if (data.success && data.token) {
-      this.setToken(data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+    if (response.success && response.token) {
+      this.setToken(response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
     }
     
-    return {
-      success: data.success,
-      message: data.message,
-      data: {
-        user: data.user,
-        token: data.token
-      },
-      error: data.error
-    };
-  }
-
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('token', token);
-  }
-
-  refreshToken() {
-    this.token = localStorage.getItem('token');
+    return response;
   }
 
   async register(userData: any): Promise<ApiResponse> {
-    const data = await this.request('/auth/register', {
+    const response = await this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
     
-    if (data.success && data.token) {
-      this.token = data.token;
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+    if (response.success && response.token) {
+      this.setToken(response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
     }
     
-    return data;
+    return response;
   }
 
   async getProfile(): Promise<ApiResponse> {
-    return this.request('/auth/profile');
+    return this.request('/auth/me');
   }
 
   async updateProfile(userData: any): Promise<ApiResponse> {
     return this.request('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(userData),
+    });
+  }
+
+  async changePassword(passwordData: any): Promise<ApiResponse> {
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(passwordData),
     });
   }
 
@@ -202,51 +180,69 @@ class ApiService {
   }
 
   async sendMessage(conversationId: string, message: string, agentId?: string): Promise<ApiResponse> {
-    // Forçar sincronização do token
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Sessão expirada. Faça login novamente.');
-    }
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          conversationId, 
-          message,
-          agentId 
-        })
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          this.logout();
-          window.location.href = '/login';
-          throw new Error('Sessão expirada. Faça login novamente.');
-        }
-        
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
-      }
+    return this.request('/chat/send', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        conversationId, 
+        message,
+        agentId 
+      })
+    });
+  }
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
+  // WhatsApp methods
+  async getWhatsAppSessions(): Promise<ApiResponse> {
+    return this.request('/whatsapp/sessions');
+  }
+
+  async sendWhatsAppMessage(phoneNumber: string, message: string, conversationId?: string): Promise<ApiResponse> {
+    return this.request('/whatsapp/send', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, message, conversationId })
+    });
+  }
+
+  // Barbearia methods
+  async getBarbeariaAgendamentos(data?: string): Promise<ApiResponse> {
+    const params = data ? `?data=${data}` : '';
+    return this.request(`/barbearia/agendamentos${params}`);
+  }
+
+  async createBarbeariaAgendamento(agendamentoData: any): Promise<ApiResponse> {
+    return this.request('/barbearia/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify(agendamentoData)
+    });
+  }
+
+  async updateBarbeariaAgendamento(id: string, updates: any): Promise<ApiResponse> {
+    return this.request(`/barbearia/agendamento/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  }
+
+  async getBarbeariaConfig(): Promise<ApiResponse> {
+    return this.request('/barbearia/configuracao');
+  }
+
+  async saveBarbeariaConfig(config: any): Promise<ApiResponse> {
+    return this.request('/barbearia/configuracao', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
   }
 
   // Admin methods
-  async getDashboardStats(): Promise<ApiResponse> {
+  async validateAdminToken(): Promise<ApiResponse> {
+    return this.request('/admin/validate');
+  }
+
+  async getAdminDashboard(): Promise<ApiResponse> {
     return this.request('/admin/dashboard');
   }
 
-  async getAllUsers(filters: any = {}): Promise<ApiResponse> {
+  async getAdminUsers(filters: any = {}): Promise<ApiResponse> {
     const queryParams = new URLSearchParams();
     Object.keys(filters).forEach(key => {
       if (filters[key] !== undefined) queryParams.append(key, filters[key]);
@@ -255,29 +251,19 @@ class ApiService {
     return this.request(`/admin/users?${queryParams}`);
   }
 
-  async createUser(userData: any): Promise<ApiResponse> {
-    return this.request('/admin/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async updateUser(id: string, userData: any): Promise<ApiResponse> {
-    return this.request(`/admin/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async deleteUser(id: string): Promise<ApiResponse> {
+  async deleteAdminUser(id: string): Promise<ApiResponse> {
     return this.request(`/admin/users/${id}`, {
       method: 'DELETE',
     });
   }
 
   // Utility methods
+  setToken(token: string) {
+    this.token = token;
+    localStorage.setItem('token', token);
+  }
+
   isAuthenticated(): boolean {
-    // Sempre sincronizar com localStorage
     this.token = localStorage.getItem('token');
     return !!this.token;
   }
@@ -295,5 +281,4 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
-export const api = apiService;
 export default apiService;

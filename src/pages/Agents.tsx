@@ -145,7 +145,6 @@ export const Agents: React.FC = () => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
-      // Auto-definir modelo correto quando o provedor for alterado
       if (field === 'ai_provider') {
         switch (value) {
           case 'gemini':
@@ -561,268 +560,6 @@ export const Agents: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Visualização */}
-      {showViewModal && selectedAgent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Detalhes do Agente</h2>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedAgent(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.name}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedAgent.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedAgent.is_active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.description || 'Não informado'}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Objetivo</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.objective || 'Não informado'}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Personalidade</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg capitalize">{selectedAgent.personality || 'professional'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provedor IA</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.ai_provider || 'chatgpt'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.model || 'gpt-3.5-turbo'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Temperatura</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.temperature || 0.7}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Tokens</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedAgent.max_tokens || 1000}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Prompt do Sistema</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">{selectedAgent.system_prompt || 'Não informado'}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Criado em</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                    {selectedAgent.created_at ? new Date(selectedAgent.created_at).toLocaleString('pt-BR') : 'Não informado'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Atualizado em</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                    {selectedAgent.updated_at ? new Date(selectedAgent.updated_at).toLocaleString('pt-BR') : 'Não informado'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedAgent(null);
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Edição */}
-      {showEditModal && selectedAgent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Editar Agente</h2>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedAgent(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome *</label>
-                  <input
-                    type="text"
-                    value={editFormData.name}
-                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Personalidade</label>
-                  <select
-                    value={editFormData.personality}
-                    onChange={(e) => setEditFormData({ ...editFormData, personality: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="professional">Profissional</option>
-                    <option value="friendly">Amigável</option>
-                    <option value="casual">Casual</option>
-                    <option value="formal">Formal</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                <textarea
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Descreva o propósito do agente..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Objetivo</label>
-                <textarea
-                  value={editFormData.objective}
-                  onChange={(e) => setEditFormData({ ...editFormData, objective: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Qual é o objetivo principal do agente?"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provedor IA</label>
-                  <select
-                    value={editFormData.ai_provider}
-                    onChange={(e) => setEditFormData({ ...editFormData, ai_provider: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="chatgpt">ChatGPT</option>
-                    <option value="claude">Claude</option>
-                    <option value="gemini">Gemini</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
-                  <select
-                    value={editFormData.model}
-                    onChange={(e) => setEditFormData({ ...editFormData, model: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    <option value="gpt-4">GPT-4</option>
-                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Prompt do Sistema</label>
-                <textarea
-                  value={editFormData.system_prompt}
-                  onChange={(e) => setEditFormData({ ...editFormData, system_prompt: e.target.value })}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Instruções específicas para o comportamento do agente..."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Temperatura</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="2"
-                    step="0.1"
-                    value={editFormData.temperature}
-                    onChange={(e) => setEditFormData({ ...editFormData, temperature: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Max Tokens</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="4000"
-                    value={editFormData.max_tokens}
-                    onChange={(e) => setEditFormData({ ...editFormData, max_tokens: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedAgent(null);
-                  }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={editLoading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                >
-                  {editLoading && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  )}
-                  <span>{editLoading ? 'Salvando...' : 'Salvar Alterações'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Create Agent Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -849,7 +586,6 @@ export const Agents: React.FC = () => {
               )}
 
               <form onSubmit={handleCreateAgent} className="space-y-4">
-                {/* Nome */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome do Agente *
@@ -868,7 +604,6 @@ export const Agents: React.FC = () => {
                   )}
                 </div>
 
-                {/* Descrição */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Descrição *
@@ -887,7 +622,6 @@ export const Agents: React.FC = () => {
                   )}
                 </div>
 
-                {/* Objetivo */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Objetivo *
@@ -907,7 +641,6 @@ export const Agents: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Personalidade */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Personalidade
@@ -924,7 +657,6 @@ export const Agents: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Provedor de IA */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Provedor de IA
@@ -941,7 +673,6 @@ export const Agents: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Modelo */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Modelo *
@@ -983,14 +714,8 @@ export const Agents: React.FC = () => {
                   {formErrors.model && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.model}</p>
                   )}
-                  {formData.ai_provider === 'gemini' && (
-                    <p className="mt-1 text-xs text-blue-600">
-                      💡 O modelo gemini-1.5-flash é recomendado para melhor performance
-                    </p>
-                  )}
                 </div>
 
-                {/* Prompt do Sistema */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Prompt do Sistema *
@@ -1010,7 +735,6 @@ export const Agents: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Temperatura */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Temperatura ({formData.temperature})
@@ -1030,10 +754,9 @@ export const Agents: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Tokens Máximos */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tokens Máximos
+                      Max Tokens
                     </label>
                     <input
                       type="number"
@@ -1051,7 +774,6 @@ export const Agents: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Botões */}
                 <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                   <button
                     type="button"
