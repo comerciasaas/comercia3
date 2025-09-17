@@ -44,21 +44,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppContent: React.FC = () => {
-  return (
-    <Router>
-      <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route 
-            path="/barbearia" 
-            element={
-              <ProtectedRoute>
-                <Barbearia />
-              </ProtectedRoute>
-            } 
-          />
+  return 
           <Route
             path="/dashboard/*"
             element={
