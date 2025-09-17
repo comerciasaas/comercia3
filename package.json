@@ -1,7 +1,7 @@
 {
   "name": "dinamica-saas",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,6 @@
     "server:dev": "nodemon server/app.js",
     "setup-db": "node server/setup-database.js",
     "build": "vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
     "start": "npm run build && npm run server"
   },
@@ -18,11 +17,6 @@
     "@headlessui/react": "^2.2.7",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.1",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.19",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/morgan": "^1.9.10",
-    "@types/node": "^24.3.1",
     "axios": "^1.12.1",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.5.0",

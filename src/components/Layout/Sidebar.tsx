@@ -4,11 +4,8 @@ import {
   HomeIcon,
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
-  ChartBarIcon,
   CogIcon,
-  ShieldCheckIcon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { useApp } from '../../contexts/AppContext';
 
@@ -17,11 +14,8 @@ const navigation = [
   { name: 'Agentes de IA', href: '/dashboard/agents', icon: UserGroupIcon },
   { name: 'Conversas', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
   { name: 'Chat IA', href: '/dashboard/chat', icon: ChatBubbleLeftRightIcon },
-  { name: 'Treinamento', href: '/dashboard/training', icon: DocumentTextIcon },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
-  { name: 'Alertas', href: '/dashboard/alerts', icon: ExclamationTriangleIcon },
-  { name: 'Admin', href: '/dashboard/admin', icon: ShieldCheckIcon },
   { name: 'Configurações', href: '/dashboard/settings', icon: CogIcon },
+  { name: 'APIs', href: '/dashboard/configuracoes', icon: WrenchScrewdriverIcon },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -34,8 +28,8 @@ export const Sidebar: React.FC = () => {
       <div className="flex items-center h-16 px-6 border-b border-gray-200">
         <div className="flex items-center">
           <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-lg">
-             <span className="text-white text-sm font-bold">D</span>
-           </div>
+            <span className="text-white text-sm font-bold">D</span>
+          </div>
           <div className="ml-3">
             <h1 className="text-lg font-bold text-gray-900">Dinâmica</h1>
             <p className="text-xs text-gray-500">IA Platform</p>
@@ -101,12 +95,6 @@ export const Sidebar: React.FC = () => {
               <span>Conversas Ativas</span>
               <span className="font-medium text-blue-600">
                 {state.dashboardStats?.overview?.activeConversations || 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>Satisfação</span>
-              <span className="font-medium text-yellow-600">
-                {state.dashboardStats?.overview?.avgSatisfaction?.toFixed(1) || '0.0'}★
               </span>
             </div>
           </div>

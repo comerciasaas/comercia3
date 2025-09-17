@@ -13,6 +13,8 @@ const Chat = lazy(() => import('./pages/Chat').then(module => ({ default: module
 const Conversations = lazy(() => import('./pages/Conversations').then(module => ({ default: module.Conversations })));
 const Settings = lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
 const Barbearia = lazy(() => import('./pages/Barbearia').then(module => ({ default: module.Barbearia })));
+const Configuracoes = lazy(() => import('./pages/Configuracoes').then(module => ({ default: module.Configuracoes })));
+const Teste = lazy(() => import('./pages/Teste').then(module => ({ default: module.Teste })));
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -44,7 +46,24 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppContent: React.FC = () => {
-  return 
+  return (
+    <Router>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/teste" element={<Teste />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          <Route
+            path="/barbearia"
+            element={
+              <ProtectedRoute>
+                <Barbearia />
+              </ProtectedRoute>
+            }
+          />
+          
           <Route
             path="/dashboard/*"
             element={
@@ -57,6 +76,7 @@ const AppContent: React.FC = () => {
                       <Route path="/chat" element={<Chat />} />
                       <Route path="/conversations" element={<Conversations />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="/configuracoes" element={<Configuracoes />} />
                     </Routes>
                   </Suspense>
                 </Layout>
