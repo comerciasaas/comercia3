@@ -5,6 +5,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 import { useApp } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { detectUserModule } from '../utils/moduleDetection';
 
 export const Login: React.FC = () => {
   const { dispatch } = useApp();
@@ -51,15 +52,9 @@ export const Login: React.FC = () => {
         dispatch({ type: 'SET_USER', payload: response.user });
         showSuccess('Login realizado com sucesso!', `Bem-vindo, ${response.user.name}`);
         
-        // Navegar baseado no role do usuário
-        const userRole = response.user.role;
-        if (userRole === 'barbearia') {
-          navigate('/barbearia');
-        } else if (userRole === 'admin') {
-          navigate('/dashboard/admin');
-        } else {
-          navigate('/dashboard');
-        }
+        // Detectar módulo automaticamente baseado no role
+        const targetModule = detectUserModule(response.user);
+        navigate(targetModule);
       } else {
         setError(response.error || 'Credenciais inválidas');
         showError('Erro no login', response.error || 'Credenciais inválidas');

@@ -13,6 +13,7 @@ interface FormData {
   confirmPassword: string;
   company: string;
   phone: string;
+  userType: 'user' | 'barbearia';
   acceptTerms: boolean;
 }
 
@@ -23,6 +24,7 @@ interface FormErrors {
   confirmPassword?: string;
   company?: string;
   phone?: string;
+  userType?: string;
   acceptTerms?: string;
   general?: string;
 }
@@ -41,6 +43,7 @@ export const Register: React.FC = () => {
     confirmPassword: '',
     company: '',
     phone: '',
+    userType: 'user',
     acceptTerms: false
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -85,6 +88,11 @@ export const Register: React.FC = () => {
       newErrors.acceptTerms = 'Você deve aceitar os termos de uso';
     }
 
+    if (!formData.userType) {
+      newErrors.userType = 'Selecione o tipo de conta';
+    }
+
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -117,7 +125,8 @@ export const Register: React.FC = () => {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
         company: formData.company.trim(),
-        phone: formData.phone.replace(/\D/g, '')
+        phone: formData.phone.replace(/\D/g, ''),
+        role: formData.userType
       });
 
       if (response.success) {
@@ -234,7 +243,7 @@ export const Register: React.FC = () => {
             {/* Empresa */}
             <div>
               <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-                Empresa *
+                {formData.userType === 'barbearia' ? 'Nome da Barbearia *' : 'Empresa *'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -249,7 +258,7 @@ export const Register: React.FC = () => {
                   className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.company ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
-                  placeholder="Nome da sua empresa"
+                  placeholder={formData.userType === 'barbearia' ? 'Nome da sua barbearia' : 'Nome da sua empresa'}
                 />
               </div>
               {errors.company && (
@@ -379,6 +388,57 @@ export const Register: React.FC = () => {
           </div>
 
           {/* Submit Button */}
+            {/* Tipo de Conta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Tipo de Conta *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
+                  formData.userType === 'user' ? 'border-blue-600 bg-blue-50' : 'border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    value="user"
+                    checked={formData.userType === 'user'}
+                    onChange={handleInputChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col">
+                    <span className="block text-sm font-medium text-gray-900">Usuário Regular</span>
+                    <span className="block text-sm text-gray-500">Para uso geral do sistema</span>
+                  </div>
+                  {formData.userType === 'user' && (
+                    <div className="absolute top-2 right-2 h-4 w-4 bg-blue-600 rounded-full"></div>
+                  )}
+                </label>
+
+                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
+                  formData.userType === 'barbearia' ? 'border-blue-600 bg-blue-50' : 'border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    value="barbearia"
+                    checked={formData.userType === 'barbearia'}
+                    onChange={handleInputChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col">
+                    <span className="block text-sm font-medium text-gray-900">Barbearia</span>
+                    <span className="block text-sm text-gray-500">Para gestão de barbearia</span>
+                  </div>
+                  {formData.userType === 'barbearia' && (
+                    <div className="absolute top-2 right-2 h-4 w-4 bg-blue-600 rounded-full"></div>
+                  )}
+                </label>
+              </div>
+              {errors.userType && (
+                <p className="mt-1 text-sm text-red-600">{errors.userType}</p>
+              )}
+            </div>
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

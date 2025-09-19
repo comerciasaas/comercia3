@@ -66,8 +66,8 @@ class AIService {
     return response.data.choices[0].message.content;
   }
 
-  async callGemini(model, message, systemPrompt, temperature, maxTokens) {
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  async callGemini(model, message, systemPrompt, temperature, maxTokens, customApiKey = null) {
+    const apiKey = customApiKey || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GOOGLE_GEMINI_API_KEY não configurada. Configure uma chave real do Google no arquivo .env');
     }
