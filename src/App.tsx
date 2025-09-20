@@ -12,17 +12,24 @@ const Agents = lazy(() => import('./pages/Agents').then(module => ({ default: mo
 const Chat = lazy(() => import('./pages/Chat').then(module => ({ default: module.Chat })));
 const Conversations = lazy(() => import('./pages/Conversations').then(module => ({ default: module.Conversations })));
 const Settings = lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
-const Barbearia = lazy(() => import('./pages/Barbearia').then(module => ({ default: module.Barbearia })));
 const Configuracoes = lazy(() => import('./pages/Configuracoes').then(module => ({ default: module.Configuracoes })));
+const Barbearia = lazy(() => import('./pages/Barbearia').then(module => ({ default: module.Barbearia })));
+const Admin = lazy(() => import('./pages/Admin').then(module => ({ default: module.Admin })));
 const Teste = lazy(() => import('./pages/Teste').then(module => ({ default: module.Teste })));
 
 const LoadingSpinner: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+  <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Carregando...</p>
+    </div>
   </div>
 );
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: string }> = ({ 
+  children, 
+  requiredRole 
+}) => {
   const { state, dispatch } = useApp();
 
   useEffect(() => {
@@ -42,6 +49,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
+  if (requiredRole && state.user?.role !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -58,8 +69,17 @@ const AppContent: React.FC = () => {
           <Route
             path="/barbearia"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="barbearia">
                 <Barbearia />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Admin />
               </ProtectedRoute>
             }
           />

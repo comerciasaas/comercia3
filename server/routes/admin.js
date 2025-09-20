@@ -1,113 +1,244 @@
 import express from 'express';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
-import adminController from '../controllers/adminController.js';
-import { validatePagination } from '../middleware/validation.js';
+import { executeQuery } from '../config/database.js';
 
 const router = express.Router();
 
-// Rota de validação de token (sem middleware admin para permitir verificação)
-router.get('/validate', authMiddleware, (req, res) => {
-    // Se chegou até aqui, o token é válido
-    if (req.user && req.user.role === 'admin') {
-        res.json({
-            success: true,
-            message: 'Token válido',
-            user: {
-                id: req.user.id,
-                name: req.user.name,
-                email: req.user.email,
-                role: req.user.role
-            }
-        });
-    } else {
-        res.status(403).json({
-            success: false,
-            message: 'Acesso negado. Apenas administradores.'
-        });
-    }
-});
-
-// Aplicar middleware de autenticação e admin para todas as outras rotas
+// Aplicar middleware de autenticação e admin
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
 // Dashboard administrativo
-router.get('/dashboard', adminController.getDashboard);
+router.get('/dashboard', async (req, res) => {
+  try {
+    const [userStats] = await executeQuery(`
+      SELECT 
+        COUNT(*) as totalUsers,
+        COUNT(CASE WHEN is_active = true THEN 1 END) as activeUsers,
+        COUNT(CASE WHEN role = 'admin' THEN 1 END) as adminUsers,
+        COUNT(CASE WHEN role = 'barbearia' THEN 1 END) as barbeariaUsers
+      FROM users
+    `);
 
-// Estatísticas para o painel admin
-router.get('/stats', adminController.getSystemStats);
-router.get('/performance', adminController.getPerformanceMetrics);
+    const [agentStats] = await executeQuery(`
+      SELECT COUNT(*) as totalAgents FROM agents
+    `);
 
-// Suspender/reativar usuários
-router.patch('/users/:userId/suspend', adminController.suspendUser);
-router.patch('/users/:userId/activate', adminController.activateUser);
+    const [conversationStats] = await executeQuery(`
+      SELECT COUNT(*) as totalConversations FROM conversations
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalUsers: userStats.totalUsers || 0,
+          activeUsers: userStats.activeUsers || 0,
+          adminUsers: userStats.adminUsers || 0,
+          barbeariaUsers: userStats.barbeariaUsers || 0,
+          totalAgents: agentStats.totalAgents || 0,
+          totalConversations: conversationStats.totalConversations || 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erro no dashboard admin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
 
 // Gerenciamento de usuários
-router.get('/users', validatePagination, adminController.getUsers);
-router.post('/users', adminController.createUser);
-router.get('/users/:id', adminController.getUserById);
-router.put('/users/:id', adminController.updateUser);
-router.put('/users/:id/settings', adminController.updateUserSettings);
-router.delete('/users/:id', adminController.deleteUser);
-router.post('/users/:id/reset-password', adminController.resetPassword);
+router.get('/users', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, search, role, is_active } = req.query;
+    
+    let query = `
+      SELECT id, name, email, role, plan, company, phone, is_active, 
+             email_verified, last_login, created_at
+      FROM users
+      WHERE 1=1
+    `;
+    const params = [];
 
-// Agentes
-router.put('/users/:userId/agents/:agentId', adminController.updateAgent);
-router.delete('/users/:userId/agents/:agentId', adminController.deleteAgent);
+    if (search) {
+      query += ` AND (name LIKE ? OR email LIKE ? OR company LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
 
-// Visualização de agentes de todos os usuários
-router.get('/agents', validatePagination, adminController.getAllAgents);
+    if (role) {
+      query += ` AND role = ?`;
+      params.push(role);
+    }
 
-// Visualização de conversas de todos os usuários
-router.get('/conversations', validatePagination, adminController.getAllConversations);
+    if (is_active !== undefined) {
+      query += ` AND is_active = ?`;
+      params.push(is_active === 'true');
+    }
 
-// Logs de auditoria
-router.get('/audit-logs', validatePagination, adminController.getAuditLogs);
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
 
-// Alertas do sistema
-router.get('/alerts', validatePagination, adminController.getAlerts);
-router.put('/alerts/:id/resolve', adminController.resolveAlert);
+    const users = await executeQuery(query, params);
 
-// Saúde do sistema
-router.get('/system/health', adminController.getSystemHealth);
+    res.json({
+      success: true,
+      data: { users }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
 
-// Configurações do sistema
-router.get('/settings', adminController.getSystemSettings);
-router.put('/settings', adminController.updateSystemSettings);
-router.put('/settings/general', adminController.updateGeneralSettings);
-router.put('/settings/integrations', adminController.updateIntegrationSettings);
-router.put('/settings/security', adminController.updateSecuritySettings);
-router.put('/settings/limits', adminController.updateLimitsSettings);
-router.put('/settings/notifications', adminController.updateNotificationSettings);
-router.put('/settings/maintenance', adminController.updateMaintenanceSettings);
+// Atualizar usuário
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active, plan, role } = req.body;
 
-// Testes de integração
-router.post('/settings/test/whatsapp', adminController.testWhatsAppConnection);
-router.post('/settings/test/email', adminController.testEmailConnection);
+    const updates = [];
+    const params = [];
 
-// Manutenção do sistema
-router.post('/maintenance/backup', adminController.createManualBackup);
-router.get('/maintenance/backup/download', adminController.downloadBackup);
-router.post('/maintenance/cleanup-logs', adminController.cleanupLogs);
-router.post('/maintenance/optimize-db', adminController.optimizeDatabase);
-router.post('/maintenance/clear-cache', adminController.clearCache)
+    if (is_active !== undefined) {
+      updates.push('is_active = ?');
+      params.push(is_active);
+    }
 
-// Support endpoints
-router.get('/support/tickets', adminController.getSupportTickets);
-router.get('/support/stats', adminController.getSupportStats);
+    if (plan) {
+      updates.push('plan = ?');
+      params.push(plan);
+    }
 
-// Logs endpoints
-router.get('/logs', adminController.getLogs);
-router.get('/logs/stats', adminController.getLogsStats);
+    if (role) {
+      updates.push('role = ?');
+      params.push(role);
+    }
 
-// Payments endpoints
-router.get('/payments', adminController.getPayments);
-router.get('/payments/stats', adminController.getPaymentsStats);
-router.get('/plans', adminController.getPlans);
-router.get('/subscriptions', adminController.getSubscriptions);
-router.get('/invoices', adminController.getInvoices);
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nenhum campo para atualizar'
+      });
+    }
 
-// Relatórios
-router.get('/reports', adminController.getReports);
+    params.push(id);
+
+    await executeQuery(`
+      UPDATE users 
+      SET ${updates.join(', ')}, updated_at = NOW()
+      WHERE id = ?
+    `, params);
+
+    res.json({
+      success: true,
+      message: 'Usuário atualizado com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
+// Excluir usuário
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar se não é admin
+    const [user] = await executeQuery('SELECT role FROM users WHERE id = ?', [id]);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Usuário não encontrado'
+      });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({
+        success: false,
+        error: 'Não é possível excluir usuário administrador'
+      });
+    }
+
+    await executeQuery('DELETE FROM users WHERE id = ?', [id]);
+
+    res.json({
+      success: true,
+      message: 'Usuário excluído com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
+// Configurações globais
+router.get('/configs', async (req, res) => {
+  try {
+    const configs = await executeQuery('SELECT config_key, config_value FROM global_configs WHERE is_active = true');
+    
+    const configObj = {};
+    configs.forEach(config => {
+      configObj[config.config_key] = config.config_value;
+    });
+
+    res.json({
+      success: true,
+      data: configObj
+    });
+  } catch (error) {
+    console.error('Erro ao buscar configurações:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
+
+// Salvar configuração global
+router.post('/configs', async (req, res) => {
+  try {
+    const { config_key, config_value } = req.body;
+
+    if (!config_key) {
+      return res.status(400).json({
+        success: false,
+        error: 'Chave de configuração é obrigatória'
+      });
+    }
+
+    await executeQuery(`
+      INSERT INTO global_configs (config_key, config_value)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE 
+        config_value = VALUES(config_value),
+        updated_at = NOW()
+    `, [config_key, config_value]);
+
+    res.json({
+      success: true,
+      message: 'Configuração salva com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao salvar configuração:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor'
+    });
+  }
+});
 
 export default router;
