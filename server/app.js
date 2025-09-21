@@ -1,19 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import http from 'http';
 import { Server as socketIo } from 'socket.io';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-import { testConnection } from './config/database.js';
+import { testConnection } from './config/supabase.js';
 import { 
   sanitizeInput, 
   errorHandler, 
@@ -60,9 +54,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Logging
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-
 // Body parsing middleware
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
@@ -88,7 +79,8 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0'
+    version: '2.0.0',
+    database: 'Supabase PostgreSQL'
   });
 });
 
@@ -129,15 +121,16 @@ const startServer = async () => {
     const dbConnected = await testConnection();
     
     if (!dbConnected) {
-      console.log('⚠️  Iniciando servidor sem conexão com banco');
-      console.log('📝 Verifique as configurações no arquivo .env');
+      console.log('⚠️  Iniciando servidor sem conexão com Supabase');
+      console.log('📝 Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env');
     }
     
     server.listen(PORT, () => {
       console.log('\n🚀 ===================================');
-      console.log(`🚀 Servidor Dinâmica Rodando`);
+      console.log(`🚀 Sistema Dinâmica SaaS v2.0`);
       console.log(`🚀 Porta: ${PORT}`);
       console.log(`🚀 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🚀 Database: Supabase PostgreSQL`);
       console.log(`🚀 ===================================`);
       console.log(`🔗 API: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Frontend: http://localhost:5173`);

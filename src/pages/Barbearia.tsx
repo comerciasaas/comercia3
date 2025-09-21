@@ -17,6 +17,7 @@ import {
   SparklesIcon,
   PencilIcon,
   TrashIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 import { useApp } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -86,11 +87,6 @@ export const Barbearia: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'agendamentos' | 'servicos' | 'clientes' | 'chat' | 'agente' | 'configuracao' | 'relatorios'>('agendamentos');
   
-  // Estados para modais
-  const [modalAberto, setModalAberto] = useState(false);
-  const [modalTipo, setModalTipo] = useState<'agendamento' | 'servico' | 'cliente' | 'agente'>('agendamento');
-  const [itemSelecionado, setItemSelecionado] = useState<any>(null);
-  
   // Estados para chat IA
   const [chatMessages, setChatMessages] = useState<Array<{id: string, sender: 'user' | 'ai', message: string, timestamp: Date}>>([]);
   const [chatInput, setChatInput] = useState('');
@@ -105,16 +101,45 @@ export const Barbearia: React.FC = () => {
     personality: 'professional',
     ai_provider: 'gemini',
     model: 'gemini-1.5-flash',
-    system_prompt: '',
+    system_prompt: `Você é um assistente virtual especializado em agendamentos de barbearia.
+
+REGRAS IMPORTANTES:
+1. Sempre confirme dados antes de agendar
+2. Verifique disponibilidade de horário
+3. Seja cordial e profissional
+4. Colete: nome, telefone, serviço, data, horário
+
+SERVIÇOS DISPONÍVEIS:
+- Corte Masculino: R$ 25,00 (30 min)
+- Barba: R$ 15,00 (20 min)
+- Cabelo + Barba: R$ 35,00 (45 min)
+- Sobrancelha: R$ 10,00 (15 min)
+
+Para confirmar agendamento, responda no formato JSON:
+{
+  "acao": "agendar",
+  "dados": {
+    "cliente": "Nome do Cliente",
+    "telefone": "(11) 99999-9999",
+    "servico": "Corte Masculino",
+    "data": "2025-01-16",
+    "horario": "14:30"
+  }
+}`,
     temperature: 0.7,
     max_tokens: 1000,
   });
+  
+  // Estados para configurações
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [configLoading, setConfigLoading] = useState(false);
   
   // Estados para relatórios
   const [relatorios, setRelatorios] = useState<any>({});
 
   useEffect(() => {
     carregarDados();
+    carregarConfiguracoes();
   }, []);
 
   const carregarDados = async () => {
@@ -151,20 +176,45 @@ export const Barbearia: React.FC = () => {
     }
   };
 
-  const carregarRelatorios = async () => {
+  const carregarConfiguracoes = async () => {
     try {
-      const response = await apiService.get('/barbearia/relatorios?periodo=30');
-      if (response.success) {
-        setRelatorios(response.data);
+      const response = await apiService.get('/barbearia/configuracao');
+      if (response.success && response.data.gemini_api_key) {
+        setGeminiApiKey(response.data.gemini_api_key);
       }
     } catch (error) {
-      console.error('Erro ao carregar relatórios:', error);
-      showError('Erro', 'Não foi possível carregar os relatórios');
+      console.error('Erro ao carregar configurações:', error);
+    }
+  };
+
+  const salvarConfiguracao = async () => {
+    try {
+      setConfigLoading(true);
+      
+      const response = await apiService.post('/barbearia/configuracao', {
+        gemini_api_key: geminiApiKey
+      });
+      
+      if (response.success) {
+        showSuccess('Configuração salva!', 'API Key do Gemini configurada com sucesso');
+      } else {
+        showError('Erro', response.error || 'Erro ao salvar configuração');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      showError('Erro', 'Não foi possível salvar a configuração');
+    } finally {
+      setConfigLoading(false);
     }
   };
 
   const criarAgente = async () => {
     try {
+      if (!agentForm.name || !agentForm.description) {
+        showError('Erro', 'Nome e descrição são obrigatórios');
+        return;
+      }
+
       const response = await apiService.post('/barbearia/agents', agentForm);
       
       if (response.success) {
@@ -176,7 +226,7 @@ export const Barbearia: React.FC = () => {
           personality: 'professional',
           ai_provider: 'gemini',
           model: 'gemini-1.5-flash',
-          system_prompt: '',
+          system_prompt: agentForm.system_prompt, // Manter o prompt padrão
           temperature: 0.7,
           max_tokens: 1000,
         });
@@ -196,6 +246,11 @@ export const Barbearia: React.FC = () => {
       return;
     }
 
+    if (!geminiApiKey) {
+      showError('Erro', 'Configure a API Key do Gemini primeiro na aba Configurações');
+      return;
+    }
+
     const mensagemUsuario = {
       id: Date.now().toString(),
       sender: 'user' as const,
@@ -210,7 +265,8 @@ export const Barbearia: React.FC = () => {
     try {
       const response = await apiService.post('/barbearia/chat', {
         message: chatInput,
-        agent_id: selectedAgent
+        agent_id: selectedAgent,
+        gemini_api_key: geminiApiKey
       });
 
       if (response.success) {
@@ -249,13 +305,13 @@ export const Barbearia: React.FC = () => {
         setAgendamentos(prev => prev.map(ag => 
           ag.id === agendamentoId ? { ...ag, status: novoStatus as any } : ag
         ));
-        showSuccess('Status atualizado com sucesso!');
+        showSuccess('Status atualizado!', `Agendamento ${novoStatus} com sucesso`);
       } else {
-        showError('Erro ao atualizar status do agendamento');
+        showError('Erro', response.error || 'Erro ao atualizar status');
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
-      showError('Erro ao atualizar status do agendamento');
+      showError('Erro', 'Não foi possível atualizar o status do agendamento');
     }
   };
 
@@ -309,7 +365,7 @@ export const Barbearia: React.FC = () => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Painel da Barbearia
+                  💈 Painel da Barbearia
                 </h1>
               </div>
             </div>
@@ -335,10 +391,7 @@ export const Barbearia: React.FC = () => {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  if (tab.id === 'relatorios') carregarRelatorios();
-                }}
+                onClick={() => setActiveTab(tab.id as any)}
                 className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
@@ -367,14 +420,7 @@ export const Barbearia: React.FC = () => {
                     <h3 className="text-xl font-semibold text-gray-900">Agendamentos</h3>
                     <p className="text-sm text-gray-500 mt-1">Gerencie os agendamentos da barbearia</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setModalTipo('agendamento');
-                      setItemSelecionado(null);
-                      setModalAberto(true);
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center transition-all shadow-lg"
-                  >
+                  <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 flex items-center transition-all shadow-lg">
                     <PlusIcon className="h-5 w-5 mr-2" />
                     Novo Agendamento
                   </button>
@@ -504,9 +550,42 @@ export const Barbearia: React.FC = () => {
                         value={agentForm.system_prompt}
                         onChange={(e) => setAgentForm(prev => ({ ...prev, system_prompt: e.target.value }))}
                         placeholder="Instruções para o agente..."
-                        rows={4}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows={8}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Personalidade
+                        </label>
+                        <select
+                          value={agentForm.personality}
+                          onChange={(e) => setAgentForm(prev => ({ ...prev, personality: e.target.value }))}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="professional">Profissional</option>
+                          <option value="friendly">Amigável</option>
+                          <option value="casual">Casual</option>
+                          <option value="formal">Formal</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Temperatura ({agentForm.temperature})
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="2"
+                          step="0.1"
+                          value={agentForm.temperature}
+                          onChange={(e) => setAgentForm(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
 
                     <button
@@ -672,12 +751,72 @@ export const Barbearia: React.FC = () => {
                       Selecione um agente para enviar mensagens
                     </p>
                   )}
+                  {!geminiApiKey && (
+                    <p className="text-xs text-orange-500 mt-2">
+                      Configure a API Key do Gemini na aba Configurações para usar o chat
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Outras abas implementadas de forma similar... */}
+          {/* Configurações Tab */}
+          {activeTab === 'configuracao' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="bg-white shadow-sm rounded-2xl border border-gray-200 p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <CogIcon className="h-6 w-6 mr-3 text-gray-600" />
+                  Configurações da Barbearia
+                </h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <KeyIcon className="h-4 w-4 inline mr-2" />
+                      API Key do Google Gemini
+                    </label>
+                    <div className="flex space-x-3">
+                      <input
+                        type="password"
+                        value={geminiApiKey}
+                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                        placeholder="AIza..."
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button
+                        onClick={salvarConfiguracao}
+                        disabled={configLoading}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        {configLoading ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Obtenha sua chave em: https://makersuite.google.com/app/apikey
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-900 mb-2">ℹ️ Como usar o Chat IA</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>1. Configure a API Key do Gemini acima</li>
+                      <li>2. Crie um agente na aba "Agente de IA"</li>
+                      <li>3. Vá para "Chat IA" e selecione o agente</li>
+                      <li>4. Digite: "Agendar corte para João, telefone (11) 99999-9999, hoje às 15h"</li>
+                      <li>5. A IA criará o agendamento automaticamente!</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Outras abas (Serviços, Clientes, Relatórios) implementadas de forma similar... */}
         </div>
       </div>
     </div>

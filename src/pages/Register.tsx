@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { EyeIcon, EyeSlashIcon, UserIcon, EnvelopeIcon, BuildingOfficeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { 
+  EyeIcon, 
+  EyeSlashIcon, 
+  UserIcon, 
+  EnvelopeIcon, 
+  BuildingOfficeIcon, 
+  LockClosedIcon,
+  SparklesIcon,
+  ScissorsIcon
+} from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 import { useApp } from '../contexts/AppContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { detectUserModule } from '../utils/moduleDetection';
 
 interface FormData {
   name: string;
@@ -15,18 +25,6 @@ interface FormData {
   phone: string;
   userType: 'user' | 'barbearia';
   acceptTerms: boolean;
-}
-
-interface FormErrors {
-  name?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  company?: string;
-  phone?: string;
-  userType?: string;
-  acceptTerms?: string;
-  general?: string;
 }
 
 export const Register: React.FC = () => {
@@ -46,10 +44,10 @@ export const Register: React.FC = () => {
     userType: 'user',
     acceptTerms: false
   });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'Nome é obrigatório';
@@ -88,11 +86,6 @@ export const Register: React.FC = () => {
       newErrors.acceptTerms = 'Você deve aceitar os termos de uso';
     }
 
-    if (!formData.userType) {
-      newErrors.userType = 'Selecione o tipo de conta';
-    }
-
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -104,8 +97,8 @@ export const Register: React.FC = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
 
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -132,7 +125,10 @@ export const Register: React.FC = () => {
       if (response.success) {
         dispatch({ type: 'SET_USER', payload: response.user });
         showSuccess('Conta criada com sucesso!', `Bem-vindo, ${response.user.name}!`);
-        navigate('/dashboard');
+        
+        // Detectar módulo automaticamente
+        const targetModule = detectUserModule(response.user);
+        navigate(targetModule);
       } else {
         setErrors({ general: response.error || 'Erro ao criar conta' });
         showError('Erro no cadastro', response.error || 'Erro ao criar conta');
@@ -161,11 +157,11 @@ export const Register: React.FC = () => {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-4"
+            className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg"
           >
-            <UserIcon className="h-8 w-8 text-white" />
+            <SparklesIcon className="h-8 w-8 text-white" />
           </motion.div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
             Criar Conta
           </h2>
           <p className="text-gray-600">
@@ -174,20 +170,80 @@ export const Register: React.FC = () => {
         </div>
 
         {/* Form */}
-        <motion.form
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-8 space-y-6"
-          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
         >
           {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm mb-6">
               {errors.general}
             </div>
           )}
 
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Tipo de Conta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Tipo de Conta *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`relative flex cursor-pointer rounded-xl border-2 p-4 focus:outline-none transition-all ${
+                  formData.userType === 'user' 
+                    ? 'border-blue-600 bg-blue-50 shadow-md' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    value="user"
+                    checked={formData.userType === 'user'}
+                    onChange={handleInputChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col items-center text-center">
+                    <UserIcon className="h-8 w-8 text-blue-600 mb-2" />
+                    <span className="block text-sm font-medium text-gray-900">Usuário Regular</span>
+                    <span className="block text-xs text-gray-500 mt-1">Para uso geral do sistema</span>
+                  </div>
+                  {formData.userType === 'user' && (
+                    <div className="absolute top-2 right-2 h-4 w-4 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="h-2 w-2 bg-white rounded-full"></div>
+                    </div>
+                  )}
+                </label>
+
+                <label className={`relative flex cursor-pointer rounded-xl border-2 p-4 focus:outline-none transition-all ${
+                  formData.userType === 'barbearia' 
+                    ? 'border-purple-600 bg-purple-50 shadow-md' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}>
+                  <input
+                    type="radio"
+                    name="userType"
+                    value="barbearia"
+                    checked={formData.userType === 'barbearia'}
+                    onChange={handleInputChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col items-center text-center">
+                    <ScissorsIcon className="h-8 w-8 text-purple-600 mb-2" />
+                    <span className="block text-sm font-medium text-gray-900">Barbearia</span>
+                    <span className="block text-xs text-gray-500 mt-1">Para gestão de barbearia</span>
+                  </div>
+                  {formData.userType === 'barbearia' && (
+                    <div className="absolute top-2 right-2 h-4 w-4 bg-purple-600 rounded-full flex items-center justify-center">
+                      <div className="h-2 w-2 bg-white rounded-full"></div>
+                    </div>
+                  )}
+                </label>
+              </div>
+              {errors.userType && (
+                <p className="mt-1 text-sm text-red-600">{errors.userType}</p>
+              )}
+            </div>
+
             {/* Nome */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -203,7 +259,7 @@ export const Register: React.FC = () => {
                   type="text"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
                   placeholder="Seu nome completo"
@@ -229,7 +285,7 @@ export const Register: React.FC = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
                   placeholder="seu@email.com"
@@ -247,7 +303,11 @@ export const Register: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                  {formData.userType === 'barbearia' ? (
+                    <ScissorsIcon className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                  )}
                 </div>
                 <input
                   id="company"
@@ -255,7 +315,7 @@ export const Register: React.FC = () => {
                   type="text"
                   value={formData.company}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.company ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
                   placeholder={formData.userType === 'barbearia' ? 'Nome da sua barbearia' : 'Nome da sua empresa'}
@@ -277,7 +337,7 @@ export const Register: React.FC = () => {
                 type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className={`block w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                className={`block w-full px-3 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                   errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}
                 placeholder="(11) 99999-9999"
@@ -302,7 +362,7 @@ export const Register: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
                   placeholder="Mínimo 6 caracteres"
@@ -339,7 +399,7 @@ export const Register: React.FC = () => {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
                     errors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
                   placeholder="Confirme sua senha"
@@ -385,93 +445,42 @@ export const Register: React.FC = () => {
             {errors.acceptTerms && (
               <p className="text-sm text-red-600">{errors.acceptTerms}</p>
             )}
-          </div>
 
-          {/* Submit Button */}
-            {/* Tipo de Conta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Tipo de Conta *
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
-                  formData.userType === 'user' ? 'border-blue-600 bg-blue-50' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="userType"
-                    value="user"
-                    checked={formData.userType === 'user'}
-                    onChange={handleInputChange}
-                    className="sr-only"
-                  />
-                  <div className="flex flex-col">
-                    <span className="block text-sm font-medium text-gray-900">Usuário Regular</span>
-                    <span className="block text-sm text-gray-500">Para uso geral do sistema</span>
-                  </div>
-                  {formData.userType === 'user' && (
-                    <div className="absolute top-2 right-2 h-4 w-4 bg-blue-600 rounded-full"></div>
-                  )}
-                </label>
-
-                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
-                  formData.userType === 'barbearia' ? 'border-blue-600 bg-blue-50' : 'border-gray-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="userType"
-                    value="barbearia"
-                    checked={formData.userType === 'barbearia'}
-                    onChange={handleInputChange}
-                    className="sr-only"
-                  />
-                  <div className="flex flex-col">
-                    <span className="block text-sm font-medium text-gray-900">Barbearia</span>
-                    <span className="block text-sm text-gray-500">Para gestão de barbearia</span>
-                  </div>
-                  {formData.userType === 'barbearia' && (
-                    <div className="absolute top-2 right-2 h-4 w-4 bg-blue-600 rounded-full"></div>
-                  )}
-                </label>
-              </div>
-              {errors.userType && (
-                <p className="mt-1 text-sm text-red-600">{errors.userType}</p>
+            {/* Submit Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Criando conta...
+                </div>
+              ) : (
+                'Criar Conta'
               )}
+            </motion.button>
+
+            {/* Login Link */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Já tem uma conta?{' '}
+                <Link
+                  to="/login"
+                  className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
+                >
+                  Fazer login
+                </Link>
+              </p>
             </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={isLoading}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            {isLoading ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Criando conta...
-              </div>
-            ) : (
-              'Criar Conta'
-            )}
-          </motion.button>
-
-          {/* Login Link */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Já tem uma conta?{' '}
-              <Link
-                to="/login"
-                className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
-              >
-                Fazer login
-              </Link>
-            </p>
-          </div>
-        </motion.form>
+          </form>
+        </motion.div>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        <div className="text-center">
           <p className="text-sm text-gray-500">
             © 2025 Dinâmica. Todos os direitos reservados.
           </p>
@@ -480,3 +489,5 @@ export const Register: React.FC = () => {
     </div>
   );
 };
+
+export default Register;

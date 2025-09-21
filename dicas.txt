@@ -5,8 +5,8 @@
 
 ### 1. OTIMIZAÇÃO DO BANCO DE DADOS
 - **Índices:** Adicione índices nas colunas mais consultadas (email, phone, created_at)
-- **Connection Pool:** Aumente o pool de conexões MySQL para 20-50 conexões
-- **Query Cache:** Ative o cache de queries no MySQL
+- **Connection Pool:** Aumente o pool de conexões Supabase para 20-50 conexões
+- **Query Cache:** Ative o cache de queries no Supabase
 - **Backup Automático:** Configure backup diário automático
 ```sql
 -- Adicionar índices importantes
@@ -36,9 +36,9 @@ npm install redis
 ### 1. VARIÁVEIS DE AMBIENTE
 ```env
 # Adicionar ao .env para melhor performance
-DB_CONNECTION_LIMIT=20
-DB_ACQUIRE_TIMEOUT=60000
-DB_TIMEOUT=60000
+SUPABASE_CONNECTION_LIMIT=20
+SUPABASE_ACQUIRE_TIMEOUT=60000
+SUPABASE_TIMEOUT=60000
 
 # Rate limiting mais específico
 RATE_LIMIT_WINDOW_MS=900000
@@ -49,15 +49,13 @@ CACHE_TTL=3600
 REDIS_URL=redis://localhost:6379
 ```
 
-### 2. CONFIGURAÇÃO DO MYSQL
+### 2. CONFIGURAÇÃO DO SUPABASE
 ```sql
--- Otimizações no MySQL (my.cnf)
-[mysqld]
-innodb_buffer_pool_size = 1G
-innodb_log_file_size = 256M
-max_connections = 200
-query_cache_size = 64M
-query_cache_type = 1
+-- Otimizações no Supabase (via Dashboard)
+-- Configurar Connection Pooling
+-- Ativar Read Replicas (plano pago)
+-- Configurar Backup automático
+-- Ativar Point-in-time Recovery
 ```
 
 ### 3. CONFIGURAÇÃO DO PM2
@@ -111,7 +109,8 @@ const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 horas
 # backup-dinamica.sh
 #!/bin/bash
 DATE=$(date +%Y%m%d_%H%M%S)
-mysqldump -u user -p dinamica_saas > /backups/dinamica_$DATE.sql
+# Backup via Supabase CLI ou API
+supabase db dump > /backups/dinamica_$DATE.sql
 find /backups -name "dinamica_*.sql" -mtime +7 -delete
 ```
 
@@ -240,9 +239,9 @@ npm install --save-dev vitest @testing-library/react playwright
 - **Load Balancer:** Distribuir carga entre instâncias
 
 ### 2. DATABASE SCALING
-- **Read Replicas:** Para consultas pesadas
-- **Sharding:** Dividir dados por usuário
+- **Read Replicas:** Supabase oferece read replicas
 - **Connection Pooling:** Otimizar conexões
+- **Query Optimization:** Otimizar queries pesadas
 
 ### 3. CDN E ASSETS
 - **CloudFlare:** Para cache global
@@ -279,7 +278,7 @@ console.log(JSON.stringify({
   level: 'info',
   message: 'Agendamento criado',
   userId: req.userId,
-  agendamentoId: result.insertId,
+  agendamentoId: result.id,
   metadata: { cliente, data, horario }
 }));
 ```
