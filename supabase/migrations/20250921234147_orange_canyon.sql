@@ -26,18 +26,20 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Índices para performance
+-- Índices
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
 
--- RLS (Row Level Security)
+-- RLS
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS
+DROP POLICY IF EXISTS "Users can read own data" ON users;
 CREATE POLICY "Users can read own data" ON users
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own data" ON users;
 CREATE POLICY "Users can update own data" ON users
   FOR UPDATE USING (auth.uid() = id);
 
@@ -70,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_agents_active ON agents(is_active);
 -- RLS
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own agents" ON agents;
 CREATE POLICY "Users can manage own agents" ON agents
   FOR ALL USING (user_id = auth.uid());
 
@@ -104,6 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_conversations_whatsapp ON conversations(whatsapp_
 -- RLS
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own conversations" ON conversations;
 CREATE POLICY "Users can manage own conversations" ON conversations
   FOR ALL USING (user_id = auth.uid());
 
@@ -133,6 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
 -- RLS
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can access messages from own conversations" ON messages;
 CREATE POLICY "Users can access messages from own conversations" ON messages
   FOR ALL USING (
     conversation_id IN (
@@ -141,7 +146,7 @@ CREATE POLICY "Users can access messages from own conversations" ON messages
   );
 
 -- =====================================================
--- CONFIGURAÇÕES WHATSAPP
+-- TABELA WHATSAPP CONFIG
 -- =====================================================
 CREATE TABLE IF NOT EXISTS whatsapp_configs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -163,11 +168,12 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_phone ON whatsapp_configs(phone_number_i
 -- RLS
 ALTER TABLE whatsapp_configs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own whatsapp configs" ON whatsapp_configs;
 CREATE POLICY "Users can manage own whatsapp configs" ON whatsapp_configs
   FOR ALL USING (user_id = auth.uid());
 
 -- =====================================================
--- CONFIGURAÇÕES GLOBAIS (ADMIN)
+-- CONFIGURAÇÕES GLOBAIS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS global_configs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -182,9 +188,10 @@ CREATE TABLE IF NOT EXISTS global_configs (
 -- Índice
 CREATE INDEX IF NOT EXISTS idx_global_configs_key ON global_configs(config_key);
 
--- RLS (apenas admins podem acessar)
+-- RLS
 ALTER TABLE global_configs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Only admins can manage global configs" ON global_configs;
 CREATE POLICY "Only admins can manage global configs" ON global_configs
   FOR ALL USING (
     EXISTS (
@@ -193,7 +200,7 @@ CREATE POLICY "Only admins can manage global configs" ON global_configs
   );
 
 -- =====================================================
--- MÓDULO BARBEARIA - AGENDAMENTOS
+-- MÓDULOS BARBEARIA (agendamentos, serviços, clientes)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS agendamentos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -206,54 +213,46 @@ CREATE TABLE IF NOT EXISTS agendamentos (
   servico VARCHAR(255) NOT NULL,
   valor DECIMAL(10,2) DEFAULT 0.00,
   pago BOOLEAN DEFAULT false,
-  metodo_pagamento VARCHAR(20) DEFAULT 'pendente' CHECK (metodo_pagamento IN ('dinheiro', 'pix', 'cartao', 'pendente')),
+  metodo_pagamento VARCHAR(20) DEFAULT 'pendente' CHECK (metodo_pagamento IN ('dinheiro','pix','cartao','pendente')),
   observacoes TEXT,
-  status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('confirmado', 'pendente', 'cancelado', 'concluido')),
+  status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('confirmado','pendente','cancelado','concluido')),
   created_by_ai BOOLEAN DEFAULT false,
   whatsapp_message_id VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_agendamentos_user ON agendamentos(user_id);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_data ON agendamentos(data);
 CREATE INDEX IF NOT EXISTS idx_agendamentos_status ON agendamentos(status);
 
--- RLS
 ALTER TABLE agendamentos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own agendamentos" ON agendamentos;
 CREATE POLICY "Users can manage own agendamentos" ON agendamentos
   FOR ALL USING (user_id = auth.uid());
 
--- =====================================================
--- MÓDULO BARBEARIA - SERVIÇOS
--- =====================================================
 CREATE TABLE IF NOT EXISTS servicos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   nome VARCHAR(255) NOT NULL,
   descricao TEXT,
   preco DECIMAL(10,2) NOT NULL,
-  duracao INTEGER NOT NULL, -- Duração em minutos
+  duracao INTEGER NOT NULL,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_servicos_user ON servicos(user_id);
 CREATE INDEX IF NOT EXISTS idx_servicos_active ON servicos(is_active);
 
--- RLS
 ALTER TABLE servicos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own servicos" ON servicos;
 CREATE POLICY "Users can manage own servicos" ON servicos
   FOR ALL USING (user_id = auth.uid());
 
--- =====================================================
--- MÓDULO BARBEARIA - CLIENTES
--- =====================================================
 CREATE TABLE IF NOT EXISTS clientes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -268,14 +267,13 @@ CREATE TABLE IF NOT EXISTS clientes (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Índices
 CREATE INDEX IF NOT EXISTS idx_clientes_user ON clientes(user_id);
 CREATE INDEX IF NOT EXISTS idx_clientes_telefone ON clientes(telefone);
 CREATE INDEX IF NOT EXISTS idx_clientes_whatsapp ON clientes(whatsapp_id);
 
--- RLS
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own clientes" ON clientes;
 CREATE POLICY "Users can manage own clientes" ON clientes
   FOR ALL USING (user_id = auth.uid());
 
@@ -292,52 +290,44 @@ CREATE TABLE IF NOT EXISTS configuracoes (
   UNIQUE(user_id, chave)
 );
 
--- Índice
 CREATE INDEX IF NOT EXISTS idx_config_user ON configuracoes(user_id);
 
--- RLS
 ALTER TABLE configuracoes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own configs" ON configuracoes;
 CREATE POLICY "Users can manage own configs" ON configuracoes
   FOR ALL USING (user_id = auth.uid());
 
 -- =====================================================
 -- INSERIR DADOS PADRÃO
 -- =====================================================
+INSERT INTO users (name,email,password,role,plan,is_active,email_verified) VALUES
+('Administrador','admin@dinamica.com',crypt('admin123',gen_salt('bf')),'admin','enterprise',true,true),
+('Usuário Teste','teste@dinamica.com',crypt('teste123',gen_salt('bf')),'user','premium',true,true),
+('Barbearia Teste','barbearia@dinamica.com',crypt('barbearia123',gen_salt('bf')),'barbearia','premium',true,true)
+ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password,is_active = true;
 
--- Usuários padrão
-INSERT INTO users (name, email, password, role, plan, is_active, email_verified) VALUES
-('Administrador', 'admin@dinamica.com', crypt('admin123', gen_salt('bf')), 'admin', 'enterprise', true, true),
-('Usuário Teste', 'teste@dinamica.com', crypt('teste123', gen_salt('bf')), 'user', 'premium', true, true),
-('Barbearia Teste', 'barbearia@dinamica.com', crypt('barbearia123', gen_salt('bf')), 'barbearia', 'premium', true, true)
-ON CONFLICT (email) DO UPDATE SET
-  password = EXCLUDED.password,
-  is_active = true;
+INSERT INTO global_configs (config_key,config_value,description) VALUES
+('openai_api_key','','Chave da API OpenAI para todos os usuários'),
+('gemini_api_key','','Chave da API Google Gemini para todos os usuários'),
+('huggingface_api_key','','Chave da API Hugging Face para todos os usuários'),
+('system_name','Dinâmica SaaS','Nome do sistema'),
+('max_agents_per_user','10','Máximo de agentes por usuário'),
+('max_whatsapp_per_user','3','Máximo de WhatsApps por usuário')
+ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
--- Configurações globais padrão
-INSERT INTO global_configs (config_key, config_value, description) VALUES
-('openai_api_key', '', 'Chave da API OpenAI para todos os usuários'),
-('gemini_api_key', '', 'Chave da API Google Gemini para todos os usuários'),
-('huggingface_api_key', '', 'Chave da API Hugging Face para todos os usuários'),
-('system_name', 'Dinâmica SaaS', 'Nome do sistema'),
-('max_agents_per_user', '10', 'Máximo de agentes por usuário'),
-('max_whatsapp_per_user', '3', 'Máximo de WhatsApps por usuário')
-ON CONFLICT (config_key) DO UPDATE SET
-  config_value = EXCLUDED.config_value;
-
--- Serviços padrão para barbearia (usuário ID será obtido dinamicamente)
+-- Serviços padrão para barbearia
 DO $$
 DECLARE
   barbearia_user_id UUID;
 BEGIN
   SELECT id INTO barbearia_user_id FROM users WHERE email = 'barbearia@dinamica.com';
-  
   IF barbearia_user_id IS NOT NULL THEN
-    INSERT INTO servicos (user_id, nome, descricao, preco, duracao) VALUES
-    (barbearia_user_id, 'Corte Masculino', 'Corte de cabelo masculino tradicional', 25.00, 30),
-    (barbearia_user_id, 'Barba', 'Aparar e modelar barba', 15.00, 20),
-    (barbearia_user_id, 'Cabelo + Barba', 'Corte completo com barba', 35.00, 45),
-    (barbearia_user_id, 'Sobrancelha', 'Design de sobrancelha masculina', 10.00, 15)
+    INSERT INTO servicos(user_id,nome,descricao,preco,duracao) VALUES
+    (barbearia_user_id,'Corte Masculino','Corte de cabelo masculino tradicional',25.00,30),
+    (barbearia_user_id,'Barba','Aparar e modelar barba',15.00,20),
+    (barbearia_user_id,'Cabelo + Barba','Corte completo com barba',35.00,45),
+    (barbearia_user_id,'Sobrancelha','Design de sobrancelha masculina',10.00,15)
     ON CONFLICT DO NOTHING;
   END IF;
 END $$;
@@ -345,8 +335,6 @@ END $$;
 -- =====================================================
 -- FUNÇÕES AUXILIARES
 -- =====================================================
-
--- Função para executar SQL dinâmico (para compatibilidade)
 CREATE OR REPLACE FUNCTION execute_sql(query_text TEXT, query_params JSONB DEFAULT '[]'::JSONB)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -355,8 +343,6 @@ AS $$
 DECLARE
   result JSONB;
 BEGIN
-  -- Esta função seria implementada conforme necessário
-  -- Por enquanto, retorna um objeto vazio
   RETURN '[]'::JSONB;
 END;
 $$;
@@ -371,11 +357,14 @@ END;
 $$ language 'plpgsql';
 
 -- Aplicar trigger em todas as tabelas
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_agents_updated_at BEFORE UPDATE ON agents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_agendamentos_updated_at BEFORE UPDATE ON agendamentos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_servicos_updated_at BEFORE UPDATE ON servicos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_clientes_updated_at BEFORE UPDATE ON clientes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_configuracoes_updated_at BEFORE UPDATE ON configuracoes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+  EXECUTE 'CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_agents_updated_at BEFORE UPDATE ON agents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_agendamentos_updated_at BEFORE UPDATE ON agendamentos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_servicos_updated_at BEFORE UPDATE ON servicos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_clientes_updated_at BEFORE UPDATE ON clientes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+  EXECUTE 'CREATE TRIGGER update_configuracoes_updated_at BEFORE UPDATE ON configuracoes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()';
+END $$;
