@@ -11,10 +11,7 @@ export const Login: React.FC = () => {
   const { dispatch } = useApp();
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,30 +35,25 @@ export const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (!validateForm()) {
-      return;
-    }
+
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
       const response = await apiService.login(formData.email, formData.password);
-      
+
       if (response.success) {
         dispatch({ type: 'SET_USER', payload: response.user });
         showSuccess('Login realizado com sucesso!', `Bem-vindo, ${response.user.name}`);
-        
-        // Detectar módulo automaticamente baseado no role
         const targetModule = detectUserModule(response.user);
         navigate(targetModule);
       } else {
         setError(response.error || 'Credenciais inválidas');
         showError('Erro no login', response.error || 'Credenciais inválidas');
       }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      const errorMessage = error.message || 'Não foi possível conectar com o servidor';
+    } catch (err: any) {
+      const errorMessage = err.message || 'Não foi possível conectar com o servidor';
       setError(errorMessage);
       showError('Erro de conexão', errorMessage);
     } finally {
@@ -70,10 +62,7 @@ export const Login: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
   };
 
@@ -160,11 +149,7 @@ export const Login: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? (
-                    <EyeSlashIcon className="w-5 h-5" />
-                  ) : (
-                    <EyeIcon className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -194,7 +179,7 @@ export const Login: React.FC = () => {
                 Criar conta
               </Link>
             </p>
-            
+
             {/* Credenciais de teste */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-xs font-medium text-blue-900 mb-2">Credenciais de Teste:</p>
@@ -205,7 +190,7 @@ export const Login: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Footer */}
         <div className="text-center mt-8">
