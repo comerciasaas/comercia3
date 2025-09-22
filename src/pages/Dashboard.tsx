@@ -6,6 +6,7 @@ import {
   ClockIcon,
   StarIcon,
   ExclamationTriangleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useApp } from '../contexts/AppContext';
 import { StatsCard } from '../components/Dashboard/StatsCard';
@@ -25,13 +26,15 @@ export const Dashboard: React.FC = () => {
         setLoading(true);
         setError(null);
         
+        // Carregar dados reais do backend
         const [agentStats, conversationStats, agents, conversations] = await Promise.all([
-          apiService.getAgentStats(),
-          apiService.getConversationStats(),
-          apiService.getAgents(),
-          apiService.getConversations({ limit: 10 })
+          apiService.getAgentStats().catch(() => ({ success: false, data: { stats: { total: 0, active: 0 } } })),
+          apiService.getConversationStats().catch(() => ({ success: false, data: { stats: { total: 0, active: 0, avgSatisfaction: 0, avgResponseTime: 0 } } })),
+          apiService.getAgents().catch(() => ({ success: false, data: { agents: [] } })),
+          apiService.getConversations({ limit: 10 }).catch(() => ({ success: false, data: { conversations: [] } }))
         ]);
         
+        // Construir estatísticas do dashboard com dados reais
         const dashboardStats = {
           overview: {
             totalAgents: agentStats.data?.stats?.total || 0,
@@ -47,6 +50,7 @@ export const Dashboard: React.FC = () => {
           }
         };
         
+        // Atualizar estado global com dados reais
         dispatch({ type: 'SET_DASHBOARD_STATS', payload: dashboardStats });
         dispatch({ type: 'SET_AGENTS', payload: agents.data?.agents || [] });
         dispatch({ type: 'SET_CONVERSATIONS', payload: conversations.data?.conversations || [] });
@@ -66,7 +70,7 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Carregando dashboard...</p>
@@ -77,7 +81,7 @@ export const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="text-center">
           <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Erro ao Carregar Dashboard</h2>
@@ -96,12 +100,18 @@ export const Dashboard: React.FC = () => {
   const stats = state.dashboardStats;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-purple-50 min-h-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Visão geral da sua plataforma de agentes de IA</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-gray-600 mt-1">Visão geral da sua plataforma de agentes de IA</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <SparklesIcon className="h-6 w-6 text-purple-600" />
+          <span className="text-sm text-gray-500">Sistema Dinâmica v2.0</span>
         </div>
       </div>
 
@@ -170,11 +180,14 @@ export const Dashboard: React.FC = () => {
           transition={{ duration: 0.3, delay: 0.2 }}
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Agentes Mais Ativos</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <UserGroupIcon className="h-5 w-5 mr-2 text-blue-600" />
+            Agentes Mais Ativos
+          </h3>
           <div className="space-y-4">
             {Array.isArray(state.agents) && state.agents.length > 0 ? (
               state.agents.slice(0, 3).map((agent) => (
-                <div key={agent.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={agent.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
                   <div className="flex items-center space-x-3">
                     <div className={`w-3 h-3 rounded-full ${agent.is_active ? 'bg-green-400' : 'bg-gray-400'}`}></div>
                     <div>
@@ -189,8 +202,9 @@ export const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-500">Nenhum agente encontrado</p>
+              <div className="text-center py-8">
+                <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">Nenhum agente encontrado</p>
                 <p className="text-sm text-gray-400 mt-1">Crie seu primeiro agente para começar</p>
               </div>
             )}
@@ -204,11 +218,14 @@ export const Dashboard: React.FC = () => {
           transition={{ duration: 0.3, delay: 0.3 }}
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Conversas Recentes</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2 text-green-600" />
+            Conversas Recentes
+          </h3>
           <div className="space-y-4">
             {Array.isArray(state.conversations) && state.conversations.length > 0 ? (
               state.conversations.slice(0, 3).map((conversation) => (
-                <div key={conversation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={conversation.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-100">
                   <div className="flex items-center space-x-3">
                     <div className={`w-3 h-3 rounded-full ${
                       conversation.status === 'active' ? 'bg-green-400' : 
@@ -226,14 +243,41 @@ export const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-500">Nenhuma conversa encontrada</p>
+              <div className="text-center py-8">
+                <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">Nenhuma conversa encontrada</p>
                 <p className="text-sm text-gray-400 mt-1">As conversas aparecerão aqui quando iniciadas</p>
               </div>
             )}
           </div>
         </motion.div>
       </div>
+
+      {/* Quick Actions */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.4 }}
+        className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ações Rápidas</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg">
+            <UserGroupIcon className="h-6 w-6 mx-auto mb-2" />
+            <span className="text-sm font-medium">Criar Agente</span>
+          </button>
+          <button className="p-4 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all shadow-lg">
+            <ChatBubbleLeftRightIcon className="h-6 w-6 mx-auto mb-2" />
+            <span className="text-sm font-medium">Nova Conversa</span>
+          </button>
+          <button className="p-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg">
+            <CogIcon className="h-6 w-6 mx-auto mb-2" />
+            <span className="text-sm font-medium">Configurações</span>
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 };
+
+export default Dashboard;

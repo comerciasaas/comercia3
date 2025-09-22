@@ -6,22 +6,27 @@ dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Configurações do Supabase não encontradas no .env');
-  console.log('📝 Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
-  process.exit(1);
+let supabase = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  console.log('✅ Supabase configurado com sucesso');
+} else {
+  console.log('⚠️  Supabase não configurado - usando dados locais');
 }
 
-// Cliente Supabase com service role para operações administrativas
-export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
-
-// Testar conexão
+// Função para testar conexão
 export const testConnection = async () => {
+  if (!supabase) {
+    console.log('⚠️  Supabase não configurado');
+    return false;
+  }
+
   try {
     const { data, error } = await supabase.from('users').select('count').limit(1);
     
@@ -38,28 +43,13 @@ export const testConnection = async () => {
   }
 };
 
-// Executar query com tratamento de erro
-export const executeQuery = async (query, params = []) => {
-  try {
-    // Para queries SQL diretas, usar rpc ou sql
-    const { data, error } = await supabase.rpc('execute_sql', { 
-      query_text: query, 
-      query_params: params 
-    });
-    
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Erro na query:', error);
-    throw error;
-  }
-};
-
-// Operações específicas por tabela
+// Operações do banco de dados
 export const db = {
   // Usuários
   users: {
     async create(userData) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('users')
         .insert(userData)
@@ -71,6 +61,8 @@ export const db = {
     },
     
     async findByEmail(email) {
+      if (!supabase) return null;
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -82,6 +74,8 @@ export const db = {
     },
     
     async findById(id) {
+      if (!supabase) return null;
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -93,6 +87,8 @@ export const db = {
     },
     
     async update(id, updates) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('users')
         .update(updates)
@@ -104,7 +100,35 @@ export const db = {
       return data;
     },
     
+    async getAll(limit = 50, offset = 0, filters = {}) {
+      if (!supabase) return [];
+      
+      let query = supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (filters.search) {
+        query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+      
+      if (filters.role) {
+        query = query.eq('role', filters.role);
+      }
+      
+      if (filters.is_active !== undefined) {
+        query = query.eq('is_active', filters.is_active);
+      }
+      
+      const { data, error } = await query.range(offset, offset + limit - 1);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    
     async delete(id) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { error } = await supabase
         .from('users')
         .delete()
@@ -117,10 +141,12 @@ export const db = {
   
   // Agentes
   agents: {
-    async create(userId, agentData) {
+    async create(agentData) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('agents')
-        .insert({ ...agentData, user_id: userId })
+        .insert(agentData)
         .select()
         .single();
       
@@ -129,24 +155,21 @@ export const db = {
     },
     
     async findByUserId(userId) {
+      if (!supabase) return [];
+      
       const { data, error } = await supabase
         .from('agents')
-        .select(`
-          *,
-          conversations(count),
-          conversations!inner(
-            satisfaction_rating,
-            messages(response_time)
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     
     async update(id, updates) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('agents')
         .update(updates)
@@ -159,6 +182,8 @@ export const db = {
     },
     
     async delete(id) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { error } = await supabase
         .from('agents')
         .delete()
@@ -172,6 +197,8 @@ export const db = {
   // Conversas
   conversations: {
     async create(conversationData) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('conversations')
         .insert(conversationData)
@@ -183,12 +210,13 @@ export const db = {
     },
     
     async findByUserId(userId, filters = {}) {
+      if (!supabase) return [];
+      
       let query = supabase
         .from('conversations')
         .select(`
           *,
-          agents(name),
-          messages(count)
+          agents(name)
         `)
         .eq('user_id', userId);
       
@@ -198,13 +226,15 @@ export const db = {
       const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   },
   
   // Mensagens
   messages: {
     async create(messageData) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('messages')
         .insert(messageData)
@@ -216,6 +246,8 @@ export const db = {
     },
     
     async findByConversationId(conversationId) {
+      if (!supabase) return [];
+      
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -223,16 +255,18 @@ export const db = {
         .order('timestamp', { ascending: true });
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   },
   
   // Agendamentos (Barbearia)
   agendamentos: {
-    async create(userId, agendamentoData) {
+    async create(agendamentoData) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('agendamentos')
-        .insert({ ...agendamentoData, user_id: userId })
+        .insert(agendamentoData)
         .select()
         .single();
       
@@ -241,13 +275,11 @@ export const db = {
     },
     
     async findByUserId(userId, filters = {}) {
+      if (!supabase) return [];
+      
       let query = supabase
         .from('agendamentos')
-        .select(`
-          *,
-          servicos(nome, preco, duracao),
-          clientes(nome, email)
-        `)
+        .select('*')
         .eq('user_id', userId);
       
       if (filters.data) query = query.eq('data', filters.data);
@@ -256,10 +288,12 @@ export const db = {
       const { data, error } = await query.order('data', { ascending: true });
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     
     async update(id, updates) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('agendamentos')
         .update(updates)
@@ -275,6 +309,8 @@ export const db = {
   // Configurações
   configs: {
     async get(userId, configKey) {
+      if (!supabase) return null;
+      
       const { data, error } = await supabase
         .from('configuracoes')
         .select('valor')
@@ -287,6 +323,8 @@ export const db = {
     },
     
     async set(userId, configKey, configValue) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
       const { data, error } = await supabase
         .from('configuracoes')
         .upsert({ 
@@ -300,5 +338,59 @@ export const db = {
       if (error) throw error;
       return data;
     }
+  },
+  
+  // Configurações globais
+  globalConfigs: {
+    async get(configKey) {
+      if (!supabase) return null;
+      
+      const { data, error } = await supabase
+        .from('global_configs')
+        .select('config_value')
+        .eq('config_key', configKey)
+        .eq('is_active', true)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.config_value;
+    },
+    
+    async set(configKey, configValue) {
+      if (!supabase) throw new Error('Supabase não configurado');
+      
+      const { data, error } = await supabase
+        .from('global_configs')
+        .upsert({ 
+          config_key: configKey, 
+          config_value: configValue,
+          is_active: true
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    
+    async getAll() {
+      if (!supabase) return {};
+      
+      const { data, error } = await supabase
+        .from('global_configs')
+        .select('config_key, config_value')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      
+      const configs = {};
+      (data || []).forEach(config => {
+        configs[config.config_key] = config.config_value;
+      });
+      
+      return configs;
+    }
   }
 };
+
+export { supabase };

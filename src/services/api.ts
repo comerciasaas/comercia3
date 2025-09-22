@@ -210,6 +210,39 @@ class ApiService {
     });
   }
 
+  async getBarbeariaServicos(): Promise<ApiResponse> {
+    return this.request('/barbearia/servicos');
+  }
+
+  async createBarbeariaServico(servicoData: any): Promise<ApiResponse> {
+    return this.request('/barbearia/servicos', {
+      method: 'POST',
+      body: JSON.stringify(servicoData)
+    });
+  }
+
+  async getBarbeariaClientes(): Promise<ApiResponse> {
+    return this.request('/barbearia/clientes');
+  }
+
+  async createBarbeariaCliente(clienteData: any): Promise<ApiResponse> {
+    return this.request('/barbearia/clientes', {
+      method: 'POST',
+      body: JSON.stringify(clienteData)
+    });
+  }
+
+  async getBarbeariaAgents(): Promise<ApiResponse> {
+    return this.request('/barbearia/agents');
+  }
+
+  async createBarbeariaAgent(agentData: any): Promise<ApiResponse> {
+    return this.request('/barbearia/agents', {
+      method: 'POST',
+      body: JSON.stringify(agentData)
+    });
+  }
+
   async getBarbeariaConfig(): Promise<ApiResponse> {
     return this.request('/barbearia/configuracao');
   }
@@ -221,11 +254,14 @@ class ApiService {
     });
   }
 
-  // Admin methods
-  async validateAdminToken(): Promise<ApiResponse> {
-    return this.request('/admin/validate');
+  async barbeariaChat(message: string, agentId: string): Promise<ApiResponse> {
+    return this.request('/barbearia/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, agent_id: agentId })
+    });
   }
 
+  // Admin methods
   async getAdminDashboard(): Promise<ApiResponse> {
     return this.request('/admin/dashboard');
   }
@@ -239,9 +275,63 @@ class ApiService {
     return this.request(`/admin/users?${queryParams}`);
   }
 
+  async updateAdminUser(id: string, updates: any): Promise<ApiResponse> {
+    return this.request(`/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
   async deleteAdminUser(id: string): Promise<ApiResponse> {
     return this.request(`/admin/users/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  async getGlobalConfigs(): Promise<ApiResponse> {
+    return this.request('/admin/configs');
+  }
+
+  async saveGlobalConfig(configKey: string, configValue: string): Promise<ApiResponse> {
+    return this.request('/admin/configs', {
+      method: 'POST',
+      body: JSON.stringify({ config_key: configKey, config_value: configValue }),
+    });
+  }
+
+  // Config methods
+  async getWhatsAppConfigs(): Promise<ApiResponse> {
+    return this.request('/config/whatsapp');
+  }
+
+  async addWhatsAppConfig(configData: any): Promise<ApiResponse> {
+    return this.request('/config/whatsapp', {
+      method: 'POST',
+      body: JSON.stringify(configData),
+    });
+  }
+
+  async deleteWhatsAppConfig(id: string): Promise<ApiResponse> {
+    return this.request(`/config/whatsapp/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async testWhatsAppConnection(configData: any): Promise<ApiResponse> {
+    return this.request('/config/test-whatsapp', {
+      method: 'POST',
+      body: JSON.stringify(configData),
+    });
+  }
+
+  async getEmailConfig(): Promise<ApiResponse> {
+    return this.request('/config/email');
+  }
+
+  async saveEmailConfig(configData: any): Promise<ApiResponse> {
+    return this.request('/config/email', {
+      method: 'POST',
+      body: JSON.stringify(configData),
     });
   }
 
