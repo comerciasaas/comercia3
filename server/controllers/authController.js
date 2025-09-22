@@ -1,16 +1,18 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
+import { db } from '../config/supabase.js';
 
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 const authController = {
-  async register(req, res, next) {
+  async register(req, res) {
     try {
       const { name, email, password, company, phone, role } = req.body;
 
-      const existingUser = await User.findByEmail(email);
+      // Verificar se email já existe
+      const existingUser = await db.users.findByEmail(email);
       if (existingUser) {
         return res.status(409).json({
           success: false,
@@ -18,13 +20,32 @@ const authController = {
         });
       }
 
-      const user = await User.create({ name, email, password, company, phone, role });
+      // Hash da senha
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Criar usuário
+      const user = await db.users.create({
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        role: role || 'user',
+        plan: 'free',
+        company,
+        phone,
+        is_active: true,
+        email_verified: true
+      });
+
+      // Gerar token
       const token = generateToken(user.id);
+
+      // Remover senha do retorno
+      const { password: _, ...userWithoutPassword } = user;
 
       res.status(201).json({
         success: true,
         message: 'Usuário criado com sucesso',
-        user,
+        user: userWithoutPassword,
         token
       });
     } catch (error) {
@@ -36,11 +57,11 @@ const authController = {
     }
   },
 
-  async login(req, res, next) {
+  async login(req, res) {
     try {
       const { email, password } = req.body;
 
-      const user = await User.findByEmail(email);
+      const user = await db.users.findByEmail(email);
       
       if (!user) {
         return res.status(401).json({
@@ -56,7 +77,7 @@ const authController = {
         });
       }
 
-      const isValidPassword = await User.validatePassword(password, user.password);
+      const isValidPassword = await bcrypt.compare(password, user.password);
       
       if (!isValidPassword) {
         return res.status(401).json({
@@ -65,7 +86,8 @@ const authController = {
         });
       }
 
-      await User.updateLastLogin(user.id);
+      // Atualizar último login
+      await db.users.update(user.id, { last_login: new Date() });
 
       const token = generateToken(user.id);
 
@@ -86,9 +108,9 @@ const authController = {
     }
   },
 
-  async getProfile(req, res, next) {
+  async getProfile(req, res) {
     try {
-      const user = await User.findById(req.userId);
+      const user = await db.users.findById(req.userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -111,46 +133,17 @@ const authController = {
     }
   },
 
-  async updateProfile(req, res, next) {
+  async updateProfile(req, res) {
     try {
-      const { currentPassword, newPassword, confirmPassword, ...profileUpdates } = req.body;
+      const updates = req.body;
       const userId = req.userId;
 
-      if (newPassword) {
-        if (!currentPassword) {
-          return res.status(400).json({
-            success: false,
-            error: 'Senha atual é obrigatória para alterar a senha'
-          });
-        }
-
-        if (newPassword !== confirmPassword) {
-          return res.status(400).json({
-            success: false,
-            error: 'Nova senha e confirmação não coincidem'
-          });
-        }
-
-        const user = await User.findById(userId);
-        if (!user) {
-          return res.status(404).json({
-            success: false,
-            error: 'Usuário não encontrado'
-          });
-        }
-
-        const isValidPassword = await User.validatePassword(currentPassword, user.password);
-        if (!isValidPassword) {
-          return res.status(400).json({
-            success: false,
-            error: 'Senha atual incorreta'
-          });
-        }
-
-        profileUpdates.password = newPassword;
+      // Se está atualizando senha, fazer hash
+      if (updates.password) {
+        updates.password = await bcrypt.hash(updates.password, 12);
       }
 
-      const updatedUser = await User.update(userId, profileUpdates);
+      const updatedUser = await db.users.update(userId, updates);
       
       if (!updatedUser) {
         return res.status(404).json({
@@ -163,7 +156,7 @@ const authController = {
 
       res.json({
         success: true,
-        message: newPassword ? 'Perfil e senha atualizados com sucesso' : 'Perfil atualizado com sucesso',
+        message: 'Perfil atualizado com sucesso',
         user: userWithoutPassword
       });
     } catch (error) {
@@ -175,12 +168,12 @@ const authController = {
     }
   },
 
-  async changePassword(req, res, next) {
+  async changePassword(req, res) {
     try {
       const { currentPassword, newPassword } = req.body;
       const userId = req.userId;
 
-      const user = await User.findById(userId);
+      const user = await db.users.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -188,7 +181,7 @@ const authController = {
         });
       }
 
-      const isValidPassword = await User.validatePassword(currentPassword, user.password);
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
       if (!isValidPassword) {
         return res.status(400).json({
           success: false,
@@ -196,7 +189,8 @@ const authController = {
         });
       }
 
-      await User.update(userId, { password: newPassword });
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await db.users.update(userId, { password: hashedPassword });
 
       res.json({
         success: true,
@@ -211,7 +205,7 @@ const authController = {
     }
   },
 
-  async logout(req, res, next) {
+  async logout(req, res) {
     try {
       res.json({
         success: true,
@@ -226,7 +220,7 @@ const authController = {
     }
   },
 
-  async refreshToken(req, res, next) {
+  async refreshToken(req, res) {
     try {
       const { token } = req.body;
       
@@ -238,7 +232,7 @@ const authController = {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId);
+      const user = await db.users.findById(decoded.userId);
       
       if (!user) {
         return res.status(404).json({
